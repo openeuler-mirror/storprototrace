@@ -220,7 +220,6 @@ static inline struct iscsi_cmd *iscsi_cmd(struct scsi_cmnd *cmd)
     return scsi_cmd_priv(cmd);
 }
 
-
 struct iscsi_r2t_info {
     __be32 ttt;
     __be32 exp_statsn;
@@ -278,6 +277,9 @@ struct {
     __uint(max_entries, 1024);
 } stats_map SEC(".maps");
 
+static __always_inline int bpf_probe_read_ptr(void *dst, size_t size, const void *src) {
+    return bpf_probe_read_kernel(dst, size, src);
+}
 
 static int get_cid(struct iscsi_task *task)
 {
@@ -291,6 +293,22 @@ static int get_sid(struct iscsi_task *task)
     int sid = 0;
     bpf_probe_read(&sid, sizeof(sid), &task->conn->session->cls_session->sid);
     return sid;
+}
+
+static void get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
+{
+    if (stats == NULL || task == NULL)
+        return;
+
+    bpf_probe_read_ptr(stats->initiator_name, sizeof(stats->initiator_name), &task->conn->session->initiatorname);
+}
+
+static void get_lun(struct iscsi_stats *stats, struct iscsi_task *task)
+{
+    if (stats == NULL || task == NULL)
+        return;
+
+    bpf_probe_read_ptr(stats->lun, sizeof(stats->lun), &task->lun);
 }
 
 SEC("kprobe/iscsi_queuecommand")
