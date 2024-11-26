@@ -161,7 +161,7 @@ int BPF_KPROBE(kpiscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *s
     struct workqueue_struct *wq;
     bpf_probe_read(&wq, sizeof(wq), &((struct iscsi_host *)host->hostdata)->workq);
 
-    if (wq) {
+    if (!wq) {
         return 0;
     }
 
