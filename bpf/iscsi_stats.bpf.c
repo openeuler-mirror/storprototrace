@@ -283,15 +283,40 @@ static __always_inline int bpf_probe_read_ptr(void *dst, size_t size, const void
 
 static int get_cid(struct iscsi_task *task)
 {
+    struct iscsi_conn *conn;
+    bpf_probe_read(&conn, sizeof(conn), &task->conn);
+    if (!conn) {
+        return 0;
+    }
+
     int cid = 0;
-    bpf_probe_read(&cid, sizeof(cid), &task->conn->id);
+    bpf_probe_read(&cid, sizeof(cid), &conn->id);
+
     return cid;
 }
 
 static int get_sid(struct iscsi_task *task)
 {
+    struct iscsi_conn *conn;
+    bpf_probe_read(&conn, sizeof(conn), &task->conn);
+    if (!conn) {
+        return 0;
+    }
+
+    struct iscsi_session *session;
+    bpf_probe_read(&session, sizeof(session), &conn->session);
+    if (!session) {
+        return 0;
+    }
+
+    struct iscsi_cls_session *cls_session;
+    bpf_probe_read(&cls_session, sizeof(cls_session), &session->cls_session);
+    if (!cls_session) {
+        return 0;
+    }
     int sid = 0;
-    bpf_probe_read(&sid, sizeof(sid), &task->conn->session->cls_session->sid);
+    bpf_probe_read(&sid, sizeof(sid), &cls_session->sid);
+
     return sid;
 }
 
@@ -311,9 +336,28 @@ static void get_lun(struct iscsi_stats *stats, struct iscsi_task *task)
     bpf_probe_read_ptr(stats->lun, sizeof(stats->lun), &task->lun);
 }
 
+static int get_op(struct iscsi_task *task)
+{
+    int flag = 0;
+    int op = OP_READ;
+
+    flag = (int)BPF_CORE_READ(task, sc->sc_data_direction);
+    if (op_is_write(flag))
+        op = OP_WRITE;
+
+    return op;
+}
+
 SEC("kprobe/iscsi_queuecommand")
 int BPF_KPROBE(kpiscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *sc)
 {
+    struct workqueue_struct *wq;
+    bpf_probe_read(&wq, sizeof(wq), &((struct iscsi_host *)host->hostdata)->workq);
+
+    if (wq) {
+        return 0;
+    }
+
     struct iscsi_time zero_time = {};
     struct iscsi_time *time = bpf_map_lookup_elem(&time_map, &sc);
     
