@@ -22,7 +22,7 @@ CLANG_BPF_SYS_INCLUDES = $(shell $(CLANG) -v -E - </dev/null 2>&1 | sed -n '/<..
 
 export
 
-all: storprototrace
+all: storprototrace all_check
 
 storprototrace: $(IO_USR) $(COMMON)/common.h $(COMMON)/iscsi_stats.skel.h
 	make -C $(IO_USR)
@@ -30,9 +30,13 @@ storprototrace: $(IO_USR) $(COMMON)/common.h $(COMMON)/iscsi_stats.skel.h
 $(COMMON)/iscsi_stats.skel.h: $(COMMON)/common.h $(IO_BPF)/iscsi_stats.bpf.c
 	make -C $(IO_BPF)
 
+all_check: $(COMMON)/common.h $(COMMON)/common.c test/*.c
+	make -C test
+
 
 .PHONY: clean
 clean:
 	make -C $(IO_BPF) clean
 	make -C $(COMMON) clean
+	make -C test clean
 	rm -rf storprototrace

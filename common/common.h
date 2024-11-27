@@ -64,7 +64,7 @@ struct iscsi_task {
         unsigned long           last_xfer;
         unsigned long           last_timeout;
         bool                    have_checked_conn;
-        bool                    protected;
+        bool                    protect;
         int                     state;
         int                     refcount;
         unsigned char           running[32];
