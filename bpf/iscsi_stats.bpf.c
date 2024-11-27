@@ -17,6 +17,21 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
+#define DEFINE_VAR(TYPE, SIZE)			\
+struct {					\
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);\
+	__uint(max_entries, SIZE);		\
+	__type(key, uint32_t);			\
+	__type(value, struct TYPE);		\
+} TYPE SEC(".maps");
+
+#define INIT_VAR() \
+uint32_t VAR_KEY=0;
+
+#define USE_VAR(TYPE, NAME, INDEX)						\
+VAR_KEY=INDEX;									\
+struct TYPE *NAME = bpf_map_lookup_elem(&TYPE, &VAR_KEY); if(!NAME) return 0;
+
 struct iscsi_host {
     char *initiatorname;
     char *hwaddress;
@@ -204,6 +219,8 @@ struct iscsi_conn {
         uint32_t                fmr_unalign_cnt;
 };
 
+DEFINE_VAR(iscsi_conn, 1);
+DEFINE_VAR(iscsi_session, 1);
 
 static inline void *scsi_cmd_priv(struct scsi_cmnd *cmd)
 {
@@ -413,6 +430,10 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     struct iscsi_time *time;
     struct iscsi_stats zero_stats = {};
     struct iscsi_stats *stats;
+
+    INIT_VAR();
+    USE_VAR(iscsi_conn, conn, 0);
+    USE_VAR(iscsi_session, session, 0);
     
     if (state != ISCSI_TASK_COMPLETED) 
         return 0;
@@ -433,6 +454,11 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     if (stats == NULL) {
         return 0;
     }
+
+    bpf_probe_read(conn, sizeof(struct iscsi_conn), BPF_CORE_READ(task,conn));
+    bpf_probe_read(session, sizeof(struct iscsi_session), conn->session);
+    bpf_probe_read_str(stats->target_name, sizeof(stats->target_name),
+                        session->targetname);
 
     time = bpf_map_lookup_elem(&time_map, &sc_ptr);
     if (time && state == ISCSI_TASK_COMPLETED && time->complete_time == 0) {
