@@ -21,10 +21,11 @@ DEFINE_int32(cid, 0, "client id");
 DEFINE_int32(sid, 0, "session id");
 DEFINE_string(target, "", "target name");
 DEFINE_string(initatorname, "", "initator name");
+DEFINE_int32(verbose, 0, "detailed debugging information");
 
 bool cli_parser(int argc, char** argv) {
 	ostringstream oss;
-	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-c CID] [-s SID] [-t TARGET] [-i INITATORNAME]";
+	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-c CID] [-s SID] [-t TARGET] [-i INITATORNAME] [-v VERBOSE]";
 	gflags::SetUsageMessage(oss.str());
 	gflags::SetVersionString("version: 1.0-1");
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
