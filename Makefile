@@ -37,6 +37,5 @@ all_check: $(COMMON)/common.h $(COMMON)/common.c test/*.c
 .PHONY: clean
 clean:
 	make -C $(IO_BPF) clean
-	make -C $(COMMON) clean
 	make -C test clean
 	rm -rf storprototrace

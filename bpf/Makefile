@@ -11,4 +11,6 @@ $(COMMON)/vmlinux.h:
 
 .PHONY: clean
 clean:
-	rm -rf  *.o
+	rm -f  *.o
+	rm -f $(COMMON)/vmlinux.h
+	rm -f $(COMMON)/iscsi_stats.skel.h
