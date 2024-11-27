@@ -30,27 +30,19 @@ static bool exiting = false;
 
 void print_stats(struct iscsi_stats *stats) {
 
-	printf("RW: Count [%lu] total bytes [%lu]\n\n",
-		stats->count, stats->total_bytes);
+	char waiting[64];
+	char sending[64];
+	char complete[64];
+	snprintf(waiting, sizeof(waiting), "%lu(%lu)", stats->waiting, stats->waiting_cycle);
+	snprintf(sending, sizeof(sending), "%lu(%lu)", stats->sending, stats->send_cycle);
+	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
 
-	printf("Toal Interval\n");
-	printf("Waiting			Sending			Complete\n");
-	printf("-----------------------------------------------------------\n");
-	printf("%lu(%lu)		%lu(%lu)		%lu(%lu)\n",
-		stats->waiting,	stats->waiting_cycle,
-		stats->sending, stats->send_cycle,
-		stats->complete, stats->complete_cycle);
-	printf("-----------------------------------------------------------\n\n");
-
-	printf("Max Interval\n");
-	printf("Waiting			Sending			Complete\n");
-	printf("-----------------------------------------------------------\n");
-	printf("%lu			%lu			%lu\n",
-		stats->max_waiting,
-		stats->max_sending,
-		stats->max_complete);
-	printf("-----------------------------------------------------------\n\n\n");
-
+	printf("%-10lu %-10lu| %-15s %-15s %-15s| %-15lu %-15lu %-15lu\n",
+			stats->count, stats->total_bytes,
+			waiting, sending, complete,
+			stats->max_waiting,
+			stats->max_sending,
+			stats->max_complete);
 }
 
 static void sig_handler(int sig)
@@ -93,6 +85,9 @@ int main() {
         goto cleanup;
     }
     printf("BPF program loaded and attached successfully.\n");
+    printf("%-20s | %-45s  | %-50s\n", "RW", "Toal Interval(ns)", "Max Interval(ns)");
+    printf("%-10s %-10s| %-15s %-15s %-15s| %-15s %-15s %-15s\n",
+		    "Count", "total","Waiting", "Sending", "Complete", "Waiting", "Sending", "Complete");
     
     map_fd = bpf_map__fd(skel->maps.stats_map);
     while (true) {
@@ -111,6 +106,8 @@ int main() {
             } else {
                 fprintf(stderr, "Failed to lookup map element\n");
             }
+	    if (exiting)
+		break;
         }
         key = next_key;
 	if (exiting)
