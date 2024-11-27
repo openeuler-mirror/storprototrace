@@ -219,6 +219,26 @@ struct iscsi_conn {
         uint32_t                fmr_unalign_cnt;
 };
 
+/*
+ * trace IO request based on ISCSI
+ */
+struct request_info {
+    struct request *req;
+    struct scsi_cmnd *cmnd;
+
+    u64 queue_time;     // Q
+    u64 getrq_time;     // G
+    u64 insert_time;    // I
+    u64 dispatch_time;  // D
+    u64 complete_time;  // C
+
+    u64 iscsi_q_time;   // iscsi_task queue time
+    u64 iscsi_p_time;   // iscsi_task pre send time
+    u64 iscsi_c_time;   // iscsi_task complete time
+
+    int result;         // status code from LLD
+};
+
 DEFINE_VAR(iscsi_conn, 1);
 DEFINE_VAR(iscsi_session, 1);
 
@@ -513,5 +533,41 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     }
 
     return 0;
+}
+
+// D point
+SEC("tp_btf/block_rq_issue")
+int BPF_PROG(block_rq_issue, struct request *rq)
+{
+	struct request_info ri;
+
+	ri.req = rq;
+	ri.dispatch_time = bpf_ktime_get_ns();
+
+	return 0;
+}
+
+// C point
+SEC("tp_btf/block_rq_complete")
+int BPF_PROG(block_rq_complete, struct request *rq)
+{
+	struct request_info ri;
+
+	ri.req = rq;
+	ri.complete_time = bpf_ktime_get_ns();
+
+	return 0;
+}
+
+// I point
+SEC("tp_btf/block_rq_insert")
+int BPF_PROG(block_rq_insert, struct request *rq)
+{
+	struct request_info ri;
+
+	ri.req = rq;
+	ri.insert_time = bpf_ktime_get_ns();
+
+	return 0;
 }
 
