@@ -312,6 +312,21 @@ static int get_sid(struct iscsi_task *task)
     return sid;
 }
 
+static inline __attribute__((always_inline)) int
+get_targetname(struct iscsi_stats *stats, struct iscsi_task *task)
+{
+    INIT_VAR();
+    USE_VAR(iscsi_conn, conn, 0);
+    USE_VAR(iscsi_session, session, 0);
+
+    bpf_probe_read(conn, sizeof(struct iscsi_conn), BPF_CORE_READ(task,conn));
+    bpf_probe_read(session, sizeof(struct iscsi_session), conn->session);
+    bpf_probe_read_str(stats->target_name, sizeof(stats->target_name),
+                        session->targetname);
+
+    return 0;
+}
+
 static void get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
 {
     if (stats == NULL || task == NULL)
@@ -387,10 +402,6 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     struct iscsi_stats zero_stats = {};
     struct iscsi_stats *stats;
 
-    INIT_VAR();
-    USE_VAR(iscsi_conn, conn, 0);
-    USE_VAR(iscsi_session, session, 0);
-    
     if (state != ISCSI_TASK_COMPLETED) 
         return 0;
 
@@ -411,10 +422,8 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
         return 0;
     }
 
-    bpf_probe_read(conn, sizeof(struct iscsi_conn), BPF_CORE_READ(task,conn));
-    bpf_probe_read(session, sizeof(struct iscsi_session), conn->session);
-    bpf_probe_read_str(stats->target_name, sizeof(stats->target_name),
-                        session->targetname);
+    // 获取targetname
+    get_targetname(stats, task);
 
     time = bpf_map_lookup_elem(&time_map, &sc_ptr);
     if (time && state == ISCSI_TASK_COMPLETED && time->complete_time == 0) {
