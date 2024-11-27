@@ -106,10 +106,10 @@ int main() {
             } else {
                 fprintf(stderr, "Failed to lookup map element\n");
             }
+	    key = next_key;
 	    if (exiting)
 		break;
         }
-        key = next_key;
 	if (exiting)
 		break;
     }
