@@ -45,6 +45,15 @@ void print_stats(struct iscsi_stats *stats) {
 			stats->max_complete);
 }
 
+void filt_targetname_print_stats(struct iscsi_stats *stats, const char *targetname) {
+    if (strcmp(stats->target_name, targetname) == 0) {
+        printf("targetname: %s\n", stats->target_name);
+        print_stats(stats);
+        printf("\n\n");
+    }
+    return;
+}
+
 static void sig_handler(int sig)
 {
 	exiting = true;
