@@ -28,37 +28,10 @@
 
 static bool exiting = false;
 
-void print_stats(struct iscsi_stats *stats) {
-
-	char waiting[64];
-	char sending[64];
-	char complete[64];
-	snprintf(waiting, sizeof(waiting), "%lu(%lu)", stats->waiting, stats->waiting_cycle);
-	snprintf(sending, sizeof(sending), "%lu(%lu)", stats->sending, stats->send_cycle);
-	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
-
-	printf("%-10lu %-10lu| %-15s %-15s %-15s| %-15lu %-15lu %-15lu\n",
-			stats->count, stats->total_bytes,
-			waiting, sending, complete,
-			stats->max_waiting,
-			stats->max_sending,
-			stats->max_complete);
-}
-
-void filt_targetname_print_stats(struct iscsi_stats *stats, const char *targetname) {
-    if (strcmp(stats->target_name, targetname) == 0) {
-        printf("targetname: %s\n", stats->target_name);
-        print_stats(stats);
-        printf("\n\n");
-    }
-    return;
-}
-
 static void sig_handler(int sig)
 {
 	exiting = true;
 }
-
 
 int main() {
     struct bpf_map *map = NULL;

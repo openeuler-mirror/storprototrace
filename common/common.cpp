@@ -10,6 +10,7 @@
  * See the Mulan PSL v2 for more details.
  */
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -35,3 +36,29 @@ int op_is_write(unsigned int op)
 #define bio_data_dir(bi_opf) \
         (op_is_write(bio_op(bi_opf)) ? WRITE : READ)
 
+void print_stats(struct iscsi_stats *stats) {
+
+	char waiting[64];
+	char sending[64];
+	char complete[64];
+	snprintf(waiting, sizeof(waiting), "%lu(%lu)", stats->waiting, stats->waiting_cycle);
+	snprintf(sending, sizeof(sending), "%lu(%lu)", stats->sending, stats->send_cycle);
+	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
+
+	printf("%-10lu %-10lu| %-15s %-15s %-15s| %-15lu %-15lu %-15lu\n",
+			stats->count, stats->total_bytes,
+			waiting, sending, complete,
+			stats->max_waiting,
+			stats->max_sending,
+			stats->max_complete);
+}
+
+int filt_targetname_print_stats(struct iscsi_stats *stats, const char *targetname) {
+    if (strcmp(stats->target_name, targetname) == 0) {
+        printf("targetname: %s\n", stats->target_name);
+        print_stats(stats);
+        printf("\n\n");
+        return 0;
+    }
+    return 1;
+}
