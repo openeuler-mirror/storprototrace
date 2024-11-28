@@ -49,14 +49,14 @@ static inline struct iscsi_cmd *iscsi_cmd(struct scsi_cmnd *cmd)
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, struct scsi_cmnd *);
+    __type(key, struct iscsi_connection);
     __type(value, struct iscsi_time);
     __uint(max_entries, 1024);
 } time_map SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, __u64);
+    __type(key, struct iscsi_connection);
     __type(value, struct iscsi_stats);
     __uint(max_entries, 1024);
 } stats_map SEC(".maps");
@@ -165,12 +165,20 @@ int BPF_KPROBE(kpiscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *s
         return 0;
     }
 
+    struct iscsi_task *task = (struct iscsi_task *)BPF_CORE_READ(iscsi_cmd(sc), task);
+    if (!task) {
+        return 0;
+    }
+
+    struct iscsi_connection conn = {};
+    conn.cid = get_cid(task);
+    conn.sid = get_sid(task);
+
     struct iscsi_time zero_time = {};
-    struct iscsi_time *time = bpf_map_lookup_elem(&time_map, &sc);
-    
+    struct iscsi_time *time = bpf_map_lookup_elem(&time_map, &conn);
     if (!time) {
-        bpf_map_update_elem(&time_map, &sc, &zero_time, BPF_NOEXIST);
-        time = bpf_map_lookup_elem(&time_map, &sc);
+        bpf_map_update_elem(&time_map, &conn, &zero_time, BPF_NOEXIST);
+        time = bpf_map_lookup_elem(&time_map, &conn);
     }
 
     if (time) {
@@ -191,14 +199,11 @@ SEC("kprobe/iscsi_prep_scsi_cmd_pdu")
 int BPF_KPROBE(kpiscsi_prep_scsi_cmd_pdu, struct iscsi_task *task)
 {
     __u64 queue_time = 0;
-    struct scsi_cmnd *sc;
-    bpf_probe_read(&sc, sizeof(sc), &task->sc);
+    struct iscsi_connection conn = {};
+    conn.cid = get_cid(task);
+    conn.sid = get_sid(task);
 
-    if (!sc) {
-        return 0;
-    }
-
-    struct iscsi_time *time = bpf_map_lookup_elem(&time_map, &sc);
+    struct iscsi_time *time = bpf_map_lookup_elem(&time_map, &conn);
     if (time) {
         if (time->prep_send_time == 0) {
             time->prep_send_time = bpf_ktime_get_ns();
@@ -216,7 +221,6 @@ SEC("kprobe/iscsi_complete_task")
 int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
 {
     struct scsi_cmnd *sc;
-    __u64 sc_ptr;
     struct iscsi_time *time;
     struct iscsi_stats zero_stats = {};
     struct iscsi_stats *stats;
@@ -229,12 +233,14 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
         return 0;
     }
 
-    sc_ptr = (__u64)sc;
+    struct iscsi_connection conn = {};
+    conn.cid = get_cid(task);
+    conn.sid = get_sid(task);
 
-    stats = bpf_map_lookup_elem(&stats_map, &sc_ptr);
+    stats = bpf_map_lookup_elem(&stats_map, &conn);
     if (!stats) {
-        bpf_map_update_elem(&stats_map, &sc_ptr, &zero_stats, BPF_NOEXIST);
-        stats = bpf_map_lookup_elem(&stats_map, &sc_ptr);
+        bpf_map_update_elem(&stats_map, &conn, &zero_stats, BPF_NOEXIST);
+        stats = bpf_map_lookup_elem(&stats_map, &conn);
     }
 
     if (stats == NULL) {
@@ -246,7 +252,7 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     // 获取initiator
     get_initiator(stats, task);
 
-    time = bpf_map_lookup_elem(&time_map, &sc_ptr);
+    time = bpf_map_lookup_elem(&time_map, &conn);
     if (time && state == ISCSI_TASK_COMPLETED && time->complete_time == 0) {
         time->complete_time = bpf_ktime_get_ns();
         bpf_printk("Get complete time,now queue = %llu, send = %llu, complete = %llu\n",
@@ -283,10 +289,10 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
         stats->total_bytes += bytes;
 
         // 更新统计信息并删除时间记录
-        bpf_map_update_elem(&stats_map, &sc_ptr, stats, BPF_EXIST);
+        bpf_map_update_elem(&stats_map, &conn, stats, BPF_EXIST);
         bpf_printk("Update stats map, now count = %u, waiting = %llu, sending = %llu, complete = %llu\n",
                    stats->count, stats->waiting, stats->sending, stats->complete);
-        bpf_map_delete_elem(&time_map, &sc_ptr);
+        bpf_map_delete_elem(&time_map, &conn);
     }
 
     return 0;
