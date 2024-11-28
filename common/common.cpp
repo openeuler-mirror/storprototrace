@@ -62,3 +62,23 @@ int filt_targetname_print_stats(struct iscsi_stats *stats, const char *targetnam
     }
     return 1;
 }
+
+int filter_sid_print_stats(struct iscsi_stats *stats, const unsigned int sid) {
+    if (stats->sid == sid) {
+        printf("sid: %s\n", stats->sid);
+        print_stats(stats);
+        printf("\n\n");
+        return 0;
+    }
+    return 1;
+}
+
+int filter_cid_print_stats(struct iscsi_stats *stats, const unsigned int cid) {
+    if (stats->cid == cid) {
+        printf("cid: %s\n", stats->cid);
+        print_stats(stats);
+        printf("\n\n");
+        return 0;
+    }
+    return 1;
+}
