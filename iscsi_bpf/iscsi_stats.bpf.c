@@ -18,6 +18,15 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
+const volatile int verbose = 0;
+
+#define trace_log(fmt, ...)                    \
+    do {                                       \
+	if (verbose)                           \
+            bpf_printk(fmt, ##__VA_ARGS__);    \
+    }while(0)
+
+
 #define DEFINE_VAR(TYPE, SIZE)			\
 struct {					\
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);\
@@ -186,8 +195,8 @@ int BPF_PROG(iscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *sc)
     if (time) {
         if (time->queue_time == 0) {
             time->queue_time = bpf_ktime_get_ns();
-            bpf_printk("Get queue time,now queue = %llu, send = %llu, complete = %llu\n",
-                       time->queue_time, time->prep_send_time, time->complete_time);
+            trace_log("Get queue time,now queue = %llu, send = %llu, complete = %llu\n",
+                      time->queue_time, time->prep_send_time, time->complete_time);
         }
     } else {
         bpf_printk("Failed to find or initialize time struct in iscsi_queuecommand.\n");
@@ -209,8 +218,8 @@ int BPF_KPROBE(kpiscsi_prep_scsi_cmd_pdu, struct iscsi_task *task)
     if (time) {
         if (time->prep_send_time == 0) {
             time->prep_send_time = bpf_ktime_get_ns();
-            bpf_printk("Get perp send time,now queue = %llu, send = %llu, complete = %llu\n",
-                       time->queue_time, time->prep_send_time, time->complete_time);
+            trace_log("Get perp send time,now queue = %llu, send = %llu, complete = %llu\n",
+                      time->queue_time, time->prep_send_time, time->complete_time);
         }
     } else {
         bpf_printk("Failed to find or initialize time struct in iscsi_prep_scsi_cmd_pdu.\n");
@@ -257,8 +266,8 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     time = bpf_map_lookup_elem(&time_map, &conn);
     if (time && state == ISCSI_TASK_COMPLETED && time->complete_time == 0) {
         time->complete_time = bpf_ktime_get_ns();
-        bpf_printk("Get complete time,now queue = %llu, send = %llu, complete = %llu\n",
-                   time->queue_time, time->prep_send_time, time->complete_time);
+        trace_log("Get complete time,now queue = %llu, send = %llu, complete = %llu\n",
+                  time->queue_time, time->prep_send_time, time->complete_time);
 
         int bytes = 0;
         bpf_probe_read(&bytes, sizeof(bytes), &sc->sdb.length);
@@ -290,8 +299,8 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
 
         // 更新统计信息并删除时间记录
         bpf_map_update_elem(&stats_map, &conn, stats, BPF_EXIST);
-        bpf_printk("Update stats map, now count = %u, waiting = %llu, sending = %llu, complete = %llu\n",
-                   stats->count, stats->waiting, stats->sending, stats->complete);
+        trace_log("Update stats map, now count = %u, waiting = %llu, sending = %llu, complete = %llu\n",
+                  stats->count, stats->waiting, stats->sending, stats->complete);
         bpf_map_delete_elem(&time_map, &conn);
     }
 

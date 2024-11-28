@@ -18,6 +18,7 @@ DECLARE_int32(cid);
 DECLARE_int32(sid);
 DECLARE_string(target);
 DECLARE_string(initatorname);
+DECLARE_int32(verbose);
 
 bool cli_parser(int argc, char** argv);
 
