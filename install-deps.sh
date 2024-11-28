@@ -34,6 +34,8 @@ deb_deps=(
   libbpf-devel
   bpftool
   make
+  cmake
+  gtest-devel
 )
 
 # Add support for centos/rhel/openEuler/suse
