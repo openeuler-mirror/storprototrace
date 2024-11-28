@@ -33,6 +33,7 @@ uint32_t VAR_KEY=0;
 VAR_KEY=INDEX;									\
 struct TYPE *NAME = bpf_map_lookup_elem(&TYPE, &VAR_KEY); if(!NAME) return 0;
 
+DEFINE_VAR(iscsi_task, 1);
 DEFINE_VAR(iscsi_conn, 1);
 DEFINE_VAR(iscsi_session, 1);
 
@@ -107,10 +108,12 @@ static inline __attribute__((always_inline)) int
 get_targetname(struct iscsi_stats *stats, struct iscsi_task *task)
 {
     INIT_VAR();
+    USE_VAR(iscsi_task, taskp, 0);
     USE_VAR(iscsi_conn, conn, 0);
     USE_VAR(iscsi_session, session, 0);
 
-    bpf_probe_read(conn, sizeof(struct iscsi_conn), BPF_CORE_READ(task,conn));
+    bpf_probe_read(taskp, sizeof(struct iscsi_task), task);
+    bpf_probe_read(conn, sizeof(struct iscsi_conn), taskp->conn);
     bpf_probe_read(session, sizeof(struct iscsi_session), conn->session);
     bpf_probe_read_str(stats->target_name, sizeof(stats->target_name),
                         session->targetname);
