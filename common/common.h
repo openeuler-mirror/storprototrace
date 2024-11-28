@@ -39,7 +39,7 @@ struct iscsi_stats {
 extern int op_is_write(unsigned int op);
 
 void print_stats(struct iscsi_stats *stats);
-int filt_targetname_print_stats(struct iscsi_stats *stats, const char *targetname);
+int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetname);
 int filter_apply(struct iscsi_stats *stats);
 
 #endif /* __COMMON_H */
