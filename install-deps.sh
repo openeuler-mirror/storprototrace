@@ -36,6 +36,7 @@ deb_deps=(
   make
   cmake
   gtest-devel
+  gflags-devel
 )
 
 # Add support for centos/rhel/openEuler/suse
@@ -45,6 +46,9 @@ rpm_deps=(
   libbpf-devel
   bpftool
   make
+  cmake
+  gtest-devel
+  gflags-devel
 )
 
 case "$ID" in
