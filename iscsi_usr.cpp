@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     printf("%-5s %-5s| %-10s %-10s| %-15s %-15s %-15s| %-15s %-15s %-15s\n",
 		    "sid", "cid", "Count", "total","Waiting", "Sending", "Complete", "Waiting", "Sending", "Complete");
 
-    if (!iscsi_stats_ebpf_loop(print_stats))
+    if (!iscsi_stats_ebpf_loop(filter_apply))
 		return 1;
 
     return 0;

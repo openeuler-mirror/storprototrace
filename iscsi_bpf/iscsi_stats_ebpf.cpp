@@ -52,7 +52,7 @@ cleanup:
 }
 
 
-bool iscsi_stats_ebpf_loop(void(*handle)(struct iscsi_stats *stats)) {
+bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
     struct iscsi_stats stats = {};
     __u64 key;
     __u64 next_key;
