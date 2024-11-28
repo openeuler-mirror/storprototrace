@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.27)
 get_filename_component(context_name ${CMAKE_CURRENT_BINARY_DIR} NAME)
 project(${context_name})
 
-
-set_property(GLOBAL PROPERTY INCLUDE_SKEL_H ${CMAKE_CURRENT_BINARY_DIR})
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set(VMLINUX_PATH "/sys/kernel/btf/vmlinux")
 find_program(BPFTOOL_COMMAND bpftool)
@@ -42,4 +39,7 @@ add_custom_command(TARGET ${PROJECT_NAME}.bpf.o
         COMMAND ${CMAKE_COMMAND} -E rm -f iscsi_stats.bpf.o
         VERBATIM
 )
+
+add_library(${PROJECT_NAME} STATIC iscsi_stats_ebpf.cpp)
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}.bpf.o)
 
