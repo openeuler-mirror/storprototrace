@@ -121,12 +121,18 @@ get_targetname(struct iscsi_stats *stats, struct iscsi_task *task)
     return 0;
 }
 
-static void get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
+static inline __attribute__((always_inline)) int
+get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
 {
+    INIT_VAR();
+    USE_VAR(iscsi_task, taskp, 0);
     if (stats == NULL || task == NULL)
-        return;
+        return 1;
 
-    bpf_probe_read_ptr(stats->initiator_name, sizeof(stats->initiator_name), &task->conn->session->initiatorname);
+    bpf_probe_read(taskp, sizeof(struct iscsi_task), task);
+    bpf_probe_read_str(stats->initiator_name, sizeof(stats->initiator_name),
+                        BPF_CORE_READ(taskp, conn, session, initiatorname));
+    return 0;
 }
 
 static void get_lun(struct iscsi_stats *stats, struct iscsi_task *task)
@@ -237,6 +243,8 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
 
     // 获取targetname
     get_targetname(stats, task);
+    // 获取initiator
+    get_initiator(stats, task);
 
     time = bpf_map_lookup_elem(&time_map, &sc_ptr);
     if (time && state == ISCSI_TASK_COMPLETED && time->complete_time == 0) {
