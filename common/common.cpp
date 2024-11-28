@@ -22,6 +22,7 @@
 #include <libgen.h>
 
 #include "common.h"
+#include "cli_parser.h"
 
 #define OP_BITS 8
 #define OP_MASK ((1 << OP_BITS) - 1)
@@ -82,4 +83,17 @@ int filter_cid_print_stats(struct iscsi_stats *stats, const unsigned int cid) {
         return 0;
     }
     return 1;
+}
+
+int filter_apply(struct iscsi_stats *stats)
+{
+	if (!filter_sid_print_stats(stats, FLAGS_cid))
+		return 0;
+	if (!filter_sid_print_stats(stats, FLAGS_sid))
+		return 0;
+	if (!filt_targetname_print_stats(stats, FLAGS_target.c_str()))
+		return 0;
+
+	print_stats(stats);
+	return 0;
 }

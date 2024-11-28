@@ -15,6 +15,6 @@
 #include "common.h"
 
 bool iscsi_stats_ebpf_load_and_attach();
-bool iscsi_stats_ebpf_loop(void(*handle)(struct iscsi_stats *stats));
+bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats));
 
 #endif
