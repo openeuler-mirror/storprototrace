@@ -20,19 +20,8 @@
 #include <libgen.h>
 #include <signal.h>
 
-#include <bpf/libbpf.h>
-#include <bpf/bpf.h>
-
 #include "iscsi_stats_ebpf.h"
-
-char *program = NULL;
-struct cli_params {
-	int cid;
-	int sid;
-
-	char *target;
-	char *initatorname;
-};
+#include "cli_parser.h"
 
 extern bool exiting;
 
@@ -41,76 +30,14 @@ static void sig_handler(int sig)
 	exiting = true;
 }
 
-void usage()
-{
-	fprintf(stdout, "Usgae: %s [-h] [-c CID] [-s SID] [-t TARGET] [-i INITATORNAME]\n", program);
-}
-
-/*
- * parse command args
- */
-bool parse_args(int argc, char *argv[], struct cli_params *cli_params)
-{
-	int err, c;
-	int cid, sid;
-	int errno;
-
-	program = basename(argv[0]);
-
-	while ((c = getopt(argc, argv, "c:s:t:i:h")) != EOF) {
-		switch (c) {
-		case 'c':
-			errno = 0;
-			cid = strtol(optarg, NULL, 10);
-			if (errno == ERANGE && (cid == INT_MAX || cid == INT_MIN))
-				goto bad;
-
-			cli_params->cid = cid;
-			break;
-
-		case 's':
-			errno = 0;
-			sid = strtol(optarg, NULL, 10);
-			if (errno == ERANGE && (sid == INT_MAX || sid == INT_MIN))
-				goto bad;
-
-			cli_params->sid = sid;
-			break;
-
-
-		case 't':
-			cli_params->target = optarg;
-			break;
-
-		case 'i':
-			cli_params->target = optarg;
-			break;
-
-		case 'h':
-			usage();
-			break;
-
-		default:
-			break;
-		}
-	}
-
-	return true;
-
-bad:
-	usage();
-	return false;
-}
 
 int main(int argc, char *argv[])
 {
-	struct cli_params cli_params = {};
-
     signal(SIGINT, sig_handler);
     signal(SIGTERM, sig_handler);
 
-	if (!parse_args(argc, argv, &cli_params))
-		return 1;
+    if (!cli_parser(argc, argv))
+	    return 1;
 
     if (!iscsi_stats_ebpf_load_and_attach())
     	return 1;
