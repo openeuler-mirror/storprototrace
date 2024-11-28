@@ -24,7 +24,7 @@ const volatile int verbose = 0;
     do {                                       \
 	if (verbose)                           \
             bpf_printk(fmt, ##__VA_ARGS__);    \
-    }while(0)
+    } while(0)
 
 
 #define DEFINE_VAR(TYPE, SIZE)			\
@@ -69,6 +69,13 @@ struct {
     __type(value, struct iscsi_stats);
     __uint(max_entries, 1024);
 } stats_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct request *);
+	__type(value, struct request_info);
+	__uint(max_entries, 1024);
+} request_map SEC(".maps");
 
 static __always_inline int bpf_probe_read_ptr(void *dst, size_t size, const void *src) {
     return bpf_probe_read_kernel(dst, size, src);
@@ -311,22 +318,35 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
 SEC("tp_btf/block_rq_issue")
 int BPF_PROG(block_rq_issue, struct request *rq)
 {
-	struct request_info ri;
+	struct request_info *req;
 
-	ri.req = rq;
-	ri.dispatch_time = bpf_ktime_get_ns();
+	req = bpf_map_lookup_elem(&request_map, &rq);
+	if (req) {
+		req->dispatch_time = bpf_ktime_get_ns();
+
+		bpf_map_update_elem(&request_map, &rq, req, BPF_NOEXIST);
+	}
 
 	return 0;
 }
 
 // C point
 SEC("tp_btf/block_rq_complete")
-int BPF_PROG(block_rq_complete, struct request *rq)
+int BPF_PROG(block_rq_complete, struct request *rq, int error, unsigned int nr_bytes)
 {
-	struct request_info ri;
+	struct request_info *req;
 
-	ri.req = rq;
-	ri.complete_time = bpf_ktime_get_ns();
+	req = bpf_map_lookup_elem(&request_map, &rq);
+	if (req) {
+		req->req = rq;
+		req->complete_time = bpf_ktime_get_ns();
+		req->result = error;
+
+		bpf_map_update_elem(&request_map, &rq, req, BPF_NOEXIST);
+	}
+
+	if (error)
+		trace_log("block_rq_complete rq 0x%llu error %d", rq, error);
 
 	return 0;
 }
@@ -335,10 +355,16 @@ int BPF_PROG(block_rq_complete, struct request *rq)
 SEC("tp_btf/block_rq_insert")
 int BPF_PROG(block_rq_insert, struct request *rq)
 {
-	struct request_info ri;
+	struct request_info ri, *req;
 
-	ri.req = rq;
-	ri.insert_time = bpf_ktime_get_ns();
+	req = bpf_map_lookup_elem(&request_map, &rq);
+	if (!req) {
+		ri.req = rq;
+		ri.insert_time = bpf_ktime_get_ns();
+		ri.result = 0;
+
+		bpf_map_update_elem(&request_map, &rq, &ri, BPF_NOEXIST);
+	}
 
 	return 0;
 }
