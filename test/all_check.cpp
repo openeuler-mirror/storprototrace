@@ -13,11 +13,23 @@
 #include <sys/stat.h>
 #include <gtest/gtest.h>
 #include "common.h"
+#include <stdio.h>
+#include <string.h>
 
 TEST(storprototrace, op_is_write)
 {
 	EXPECT_EQ(op_is_write(10), 0);
 	EXPECT_EQ(op_is_write(5), 1);
+}
+
+TEST(storprototrace, filt_targetname_print_stats)
+{
+	struct iscsi_stats stats;
+	memset(&stats, 0, sizeof(stats));
+	strcpy(stats.target_name, "iqn.2012-01.com.openeuler");
+
+	EXPECT_EQ(filt_targetname_print_stats(&stats, "iqn.2012-01.com.openeuler"), 0);
+	EXPECT_EQ(filt_targetname_print_stats(&stats, "iqn.2013-01.com.openeuler"), 1);
 }
 
 int main(int argc, char *argv[])
