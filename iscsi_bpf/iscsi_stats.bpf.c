@@ -155,18 +155,20 @@ static int get_op(struct iscsi_task *task)
     return op;
 }
 
-SEC("kprobe/iscsi_queuecommand")
-int BPF_KPROBE(kpiscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *sc)
+SEC("fexit/iscsi_queuecommand")
+int BPF_PROG(iscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *sc)
 {
     struct workqueue_struct *wq;
     bpf_probe_read(&wq, sizeof(wq), &((struct iscsi_host *)host->hostdata)->workq);
 
     if (!wq) {
+        bpf_printk("Get iscsi work queue error\n");
         return 0;
     }
 
     struct iscsi_task *task = (struct iscsi_task *)BPF_CORE_READ(iscsi_cmd(sc), task);
     if (!task) {
+        bpf_printk("Get iscsi task error\n");
         return 0;
     }
 
@@ -267,6 +269,12 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
             if (stats->waiting > stats->max_waiting) {
                 stats->max_waiting = stats->waiting;
             }
+
+            stats->complete = time->complete_time - time->queue_time;
+            stats->complete_cycle++;
+            if (stats->complete > stats->max_complete) {
+                stats->max_complete = stats->complete;
+            }
         }
 
         if (time->prep_send_time != 0) {
@@ -277,14 +285,6 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
             }
         }
 
-        if (time->queue_time != 0) {
-            stats->complete = time->complete_time - time->queue_time;
-            stats->complete_cycle++;
-            if (stats->complete > stats->max_complete) {
-                stats->max_complete = stats->complete;
-            }
-        }
-	
         stats->count++;
         stats->total_bytes += bytes;
 
