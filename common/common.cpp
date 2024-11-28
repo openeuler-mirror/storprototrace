@@ -45,7 +45,8 @@ void print_stats(struct iscsi_stats *stats) {
 	snprintf(sending, sizeof(sending), "%lu(%lu)", stats->sending, stats->send_cycle);
 	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
 
-	printf("%-10lu %-10lu| %-15s %-15s %-15s| %-15lu %-15lu %-15lu\n",
+	printf("%-5lu %-5lu| %-10lu %-10lu| %-15s %-15s %-15s| %-15lu %-15lu %-15lu\n",
+			stats->sid, stats->cid,
 			stats->count, stats->total_bytes,
 			waiting, sending, complete,
 			stats->max_waiting,

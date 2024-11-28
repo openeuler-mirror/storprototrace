@@ -43,9 +43,9 @@ int main(int argc, char *argv[])
     	return 1;
 
     printf("BPF program loaded and attached successfully.\n");
-    printf("%-20s | %-45s  | %-50s\n", "RW", "Toal Interval(ns)", "Max Interval(ns)");
-    printf("%-10s %-10s| %-15s %-15s %-15s| %-15s %-15s %-15s\n",
-		    "Count", "total","Waiting", "Sending", "Complete", "Waiting", "Sending", "Complete");
+    printf("%-10s | %-20s | %-45s  | %-50s\n","Connect", "RW", "Toal Interval(ns)", "Max Interval(ns)");
+    printf("%-5s %-5s| %-10s %-10s| %-15s %-15s %-15s| %-15s %-15s %-15s\n",
+		    "sid", "cid", "Count", "total","Waiting", "Sending", "Complete", "Waiting", "Sending", "Complete");
 
     if (!iscsi_stats_ebpf_loop(print_stats))
 		return 1;
