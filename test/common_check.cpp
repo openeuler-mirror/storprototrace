@@ -28,8 +28,8 @@ TEST(storprototrace, filt_targetname_print_stats)
 	memset(&stats, 0, sizeof(stats));
 	strcpy(stats.target_name, "iqn.2012-01.com.openeuler");
 
-	EXPECT_EQ(filt_targetname_print_stats(&stats, "iqn.2012-01.com.openeuler"), 0);
-	EXPECT_EQ(filt_targetname_print_stats(&stats, "iqn.2013-01.com.openeuler"), 1);
+	EXPECT_EQ(filter_targetname_print_stats(&stats, "iqn.2012-01.com.openeuler"), 0);
+	EXPECT_EQ(filter_targetname_print_stats(&stats, "iqn.2013-01.com.openeuler"), 1);
 }
 
 int main(int argc, char *argv[])

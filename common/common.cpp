@@ -55,7 +55,7 @@ void print_stats(struct iscsi_stats *stats) {
 			stats->max_complete);
 }
 
-int filt_targetname_print_stats(struct iscsi_stats *stats, const char *targetname) {
+int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetname) {
     if (strcmp(stats->target_name, targetname) == 0) {
         printf("targetname: %s\n", stats->target_name);
         print_stats(stats);
@@ -87,13 +87,27 @@ int filter_cid_print_stats(struct iscsi_stats *stats, const unsigned int cid) {
 
 int filter_apply(struct iscsi_stats *stats)
 {
-	if (!filter_sid_print_stats(stats, FLAGS_cid))
+    bool has_filter = false;
+    gflags::CommandLineFlagInfo info;
+    if(GetCommandLineFlagInfo("cid" ,&info) && !info.is_default) {
+        has_filter = true;
+        if(!filter_cid_print_stats(stats, FLAGS_cid)) {
+            return 0;
+        }
+    }
+    if(GetCommandLineFlagInfo("sid" ,&info) && !info.is_default) {
+        has_filter = true;
+        if(!filter_sid_print_stats(stats, FLAGS_sid)) {
 		return 0;
-	if (!filter_sid_print_stats(stats, FLAGS_sid))
+	}
+    }
+    if(GetCommandLineFlagInfo("target" ,&info) && !info.is_default) {
+        has_filter = true;
+        if(!filter_targetname_print_stats(stats, FLAGS_target.c_str())) {
 		return 0;
-	if (!filt_targetname_print_stats(stats, FLAGS_target.c_str()))
-		return 0;
-
-	print_stats(stats);
-	return 0;
+	}
+    }
+    if(!has_filter)
+        print_stats(stats);
+    return 0;
 }
