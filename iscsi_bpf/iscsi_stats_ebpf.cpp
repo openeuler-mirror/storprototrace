@@ -11,6 +11,7 @@
  */
 #include "iscsi_stats_ebpf.h"
 #include "iscsi_stats.skel.h"
+#include "cli_parser.h"
 
 #include <bpf/libbpf.h>
 #include <bpf/bpf.h>
@@ -64,6 +65,9 @@ bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
         key = 0;
         while (!exiting) {
             err = bpf_map_get_next_key(map_fd, &key, &next_key);
+            if(FLAGS_once) {
+	    	bpf_map_delete_elem(map_fd, &key);
+	    }
             if (err) {
                 if (errno == ENOENT)
                         err = 0;
@@ -74,7 +78,7 @@ bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
 	    	fprintf(stderr, "Failed to lookup map element\n");
 		break;
 	    }
-            handle(&stats);
+	    handle(&stats);
             key = next_key;
         }
     }

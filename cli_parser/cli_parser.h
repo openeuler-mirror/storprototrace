@@ -14,6 +14,7 @@
 
 #include <gflags/gflags.h>
 
+DECLARE_bool(once);
 DECLARE_int32(cid);
 DECLARE_int32(sid);
 DECLARE_string(target);

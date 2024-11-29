@@ -19,6 +19,7 @@ using namespace std;
 using namespace std::filesystem;
 
 DEFINE_bool(h, false, "show short help message");
+DEFINE_bool(once, false, "show event only once");
 DEFINE_int32(cid, -1, "connection id");
 DEFINE_int32(sid, -1, "session id");
 DEFINE_string(target, "", "target name");
@@ -63,6 +64,7 @@ bool validate_sid_cid()
 bool cli_parser(int argc, char** argv) {
 	ostringstream oss;
 	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-c CID] [-s SID] [-t TARGET] [-i INITATORNAME] [-v VERBOSE]";
+	oss<<" [-once]";
 	gflags::SetUsageMessage(oss.str());
 	gflags::SetVersionString("version: 1.0-1");
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
