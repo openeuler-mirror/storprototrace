@@ -67,7 +67,7 @@ int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetn
 
 int filter_sid_print_stats(struct iscsi_stats *stats, const unsigned int sid) {
     if (stats->sid == sid) {
-        printf("sid: %s\n", stats->sid);
+        printf("sid: %u\n", stats->sid);
         print_stats(stats);
         printf("\n\n");
         return 0;
@@ -77,7 +77,7 @@ int filter_sid_print_stats(struct iscsi_stats *stats, const unsigned int sid) {
 
 int filter_cid_print_stats(struct iscsi_stats *stats, const unsigned int cid) {
     if (stats->cid == cid) {
-        printf("cid: %s\n", stats->cid);
+        printf("cid: %u\n", stats->cid);
         print_stats(stats);
         printf("\n\n");
         return 0;
