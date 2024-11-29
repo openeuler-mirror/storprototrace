@@ -20,8 +20,8 @@ using namespace std::filesystem;
 
 DEFINE_bool(h, false, "show short help message");
 DEFINE_bool(once, false, "show event only once");
-DEFINE_int32(cid, -1, "connection id");
-DEFINE_int32(sid, -1, "session id");
+DEFINE_uint32(cid, 0, "connection id");
+DEFINE_uint32(sid, 0, "session id");
 DEFINE_string(target, "", "target name");
 DEFINE_string(initatorname, "", "initator name");
 DEFINE_int32(verbose, 0, "detailed debugging information");
@@ -31,31 +31,30 @@ DEFINE_int32(verbose, 0, "detailed debugging information");
  */
 bool validate_sid_cid()
 {
-	ostringstream oss;
-
-	google::CommandLineFlagInfo info_sid;
-	google::CommandLineFlagInfo info_cid;
-
-	if ((GetCommandLineFlagInfo("sid", &info_sid) && info_sid.is_default) &&
-		(GetCommandLineFlagInfo("cid", &info_cid) && info_cid.is_default)) {
-		return true;
+	gflags::CommandLineFlagInfo info_sid;
+	gflags::CommandLineFlagInfo info_cid;
+	bool has_sid = false;
+	if (gflags::GetCommandLineFlagInfo("sid", &info_sid) && !info_sid.is_default) {
+		has_sid = true;
+		ostringstream oss;
+		oss <<"/sys/class/iscsi_session/session"<<FLAGS_sid;
+	        if (!is_directory(oss.str())) {
+			cout<<"can not find this session"<<endl;
+			return false;
+	        }
 	}
 
-	if (!info_sid.is_default && FLAGS_sid < 0) {
-		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
-	}
-
-	if (!info_cid.is_default && FLAGS_cid < 0) {
-		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
-	}
-
-	oss << "/sys/class/iscsi_connection/connection" << FLAGS_sid << ":" << FLAGS_cid;
-
-	if (!is_directory(oss.str())) {
-		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
+	if (GetCommandLineFlagInfo("cid", &info_cid) && !info_cid.is_default) {
+		if(!has_sid) {
+                        cout<<"need sid!"<<endl;
+			return false;
+		}
+                ostringstream oss;
+		oss << "/sys/class/iscsi_connection/connection" << FLAGS_sid << ":" << FLAGS_cid;
+                if (!is_directory(oss.str())) {
+                        cout<<"can not find this connection"<<endl;
+			return false;
+                }
 	}
 
 	return true;
@@ -63,7 +62,7 @@ bool validate_sid_cid()
 
 bool cli_parser(int argc, char** argv) {
 	ostringstream oss;
-	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-c CID] [-s SID] [-t TARGET] [-i INITATORNAME] [-v VERBOSE]";
+	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-cid CID] [-sid SID] [-target TARGET] [-initatorname INITATORNAME] [-verbose VERBOSE]";
 	oss<<" [-once]";
 	gflags::SetUsageMessage(oss.str());
 	gflags::SetVersionString("version: 1.0-1");
