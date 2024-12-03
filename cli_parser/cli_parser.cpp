@@ -60,6 +60,30 @@ bool validate_sid_cid()
 	return true;
 }
 
+/*
+ * validate targetname
+ */
+bool validate_targetname()
+{
+	gflags::CommandLineFlagInfo info_target;
+
+	if (gflags::GetCommandLineFlagInfo("target name", &info_target) && info_target.is_default)
+		return true;
+
+	if (!info_target.is_default) {
+		ostringstream oss;
+
+		oss << "/etc/iscsi/nodes/" << FLAGS_target;
+
+		if (!exists(oss.str())) {
+			cout<<gflags::ProgramUsage()<<endl;
+			exit(0);
+		}
+	}
+
+	return true;
+}
+
 bool cli_parser(int argc, char** argv) {
 	ostringstream oss;
 	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-cid CID] [-sid SID] [-target TARGET] [-initatorname INITATORNAME] [-verbose VERBOSE]";
@@ -73,6 +97,11 @@ bool cli_parser(int argc, char** argv) {
 	}
 
 	if (!validate_sid_cid()) {
+		cout<<gflags::ProgramUsage()<<endl;
+		exit(0);
+	}
+
+	if (!validate_targetname()) {
 		cout<<gflags::ProgramUsage()<<endl;
 		exit(0);
 	}
