@@ -45,6 +45,7 @@ extern int op_is_write(unsigned int op);
 
 void print_stats(struct iscsi_stats *stats);
 int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetname);
+int filter_initiatorname_print_stats(struct iscsi_stats *stats, const char *initiatorname);
 int filter_cid_print_stats(struct iscsi_stats *stats, const unsigned int cid);
 int filter_sid_print_stats(struct iscsi_stats *stats, const unsigned int sid);
 int filter_apply(struct iscsi_stats *stats);

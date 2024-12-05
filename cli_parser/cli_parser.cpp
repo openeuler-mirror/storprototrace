@@ -72,15 +72,13 @@ bool validate_targetname()
 	if (gflags::GetCommandLineFlagInfo("target", &info_target) && info_target.is_default)
 		return true;
 
-	if (!info_target.is_default) {
-		ostringstream oss;
+	ostringstream oss;
 
-		oss << "/etc/iscsi/nodes/" << FLAGS_target;
+	oss << "/etc/iscsi/nodes/" << FLAGS_target;
 
-		if (!exists(oss.str())) {
-			cout<<gflags::ProgramUsage()<<endl;
-			exit(0);
-		}
+	if (!exists(oss.str())) {
+		cout<<gflags::ProgramUsage()<<endl;
+		exit(0);
 	}
 
 	return true;
@@ -96,30 +94,29 @@ bool validate_initiatorname()
 	if (gflags::GetCommandLineFlagInfo("initiatorname", &info) && info.is_default)
 		return true;
 
-	if (!info.is_default) {
-		path iscsi_session_prefix = "/sys/class/iscsi_session";
-		std::string target_initiatorname = FLAGS_initiatorname;
+	path iscsi_session_prefix = "/sys/class/iscsi_session";
+	std::string target_initiatorname = FLAGS_initiatorname;
 
-		if (!exists(iscsi_session_prefix) || !is_directory(iscsi_session_prefix)) {
-			cout<<gflags::ProgramUsage()<<endl;
-			exit(0);
-		}
+	if (!exists(iscsi_session_prefix) || !is_directory(iscsi_session_prefix)) {
+		cout<<gflags::ProgramUsage()<<endl;
+		exit(0);
+	}
 
-		for (const auto& session : directory_iterator(iscsi_session_prefix)) {
-			if (is_directory(session)) {
-				path initiatorname_path = session.path() / "initiatorname";
+	for (const auto& session : directory_iterator(iscsi_session_prefix)) {
+		if (!is_directory(session))
+			continue;
 
-				if (exists(initiatorname_path) && is_regular_file(initiatorname_path)) {
-					std::ifstream initiatorname_file(initiatorname_path);
-					std::string initiatorname;
+		path initiatorname_path = session.path() / "initiatorname";
 
-					if (std::getline(initiatorname_file, initiatorname)) {
-						if (initiatorname == target_initiatorname)
-							return true;
-						}
-					}
-			}
-		}
+		if (!exists(initiatorname_path) || !is_regular_file(initiatorname_path))
+			continue;
+
+		std::ifstream initiatorname_file(initiatorname_path);
+		std::string initiatorname;
+
+		if (std::getline(initiatorname_file, initiatorname))
+			if (initiatorname == target_initiatorname)
+				return true;
 	}
 
 	return false;
