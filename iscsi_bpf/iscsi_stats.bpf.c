@@ -270,6 +270,9 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     // 获取initiator
     get_initiator(stats, task);
 
+    stats->cid = conn.cid;
+    stats->sid = conn.sid;
+
     time = bpf_map_lookup_elem(&time_map, &conn);
     if (time && state == ISCSI_TASK_COMPLETED && time->complete_time == 0) {
         time->complete_time = bpf_ktime_get_ns();

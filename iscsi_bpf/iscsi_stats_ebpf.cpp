@@ -63,25 +63,40 @@ bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
     while (!exiting && !err) {
         sleep(1);
         key = 0;
+        int scan_count = 0; // 添加计数器，防止死循环
         while (!exiting) {
             err = bpf_map_get_next_key(map_fd, &key, &next_key);
-            if(FLAGS_once) {
-	    	bpf_map_delete_elem(map_fd, &key);
-	    }
             if (err) {
-                if (errno == ENOENT)
-                        err = 0;
+                if (errno == ENOENT) {
+                    err = 0;
+                } else {
+                    fprintf(stderr, "Failed to get next key: %s\n", strerror(errno));
+                }
                 break;
             }
+
             err = bpf_map_lookup_elem(map_fd, &next_key, &stats);
-	    if (err) {
-	    	fprintf(stderr, "Failed to lookup map element\n");
-		break;
-	    }
-	    handle(&stats);
+            if (err) {
+                fprintf(stderr, "Failed to lookup map element: %s\n", strerror(errno));
+                break;
+            }
+            handle(&stats);
+            if (FLAGS_once) {
+                if (bpf_map_delete_elem(map_fd, &next_key)) {
+                    fprintf(stderr, "Failed to delete map element: %s\n", strerror(errno));
+                }
+            }
             key = next_key;
+
+            // 增加扫描计数
+            scan_count++;
+            if (scan_count > 1000) { // 防止死循环
+                fprintf(stderr, "Too many iterations, exiting...\n");
+                break;
+            }
         }
     }
+
     iscsi_stats_bpf__destroy(skel);
     return err == 0;
 }
