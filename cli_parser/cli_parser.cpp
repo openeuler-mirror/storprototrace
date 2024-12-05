@@ -25,7 +25,8 @@ DEFINE_uint32(cid, 0, "connection id");
 DEFINE_uint32(sid, 0, "session id");
 DEFINE_string(target, "", "target name");
 DEFINE_string(initiatorname, "", "initiator name");
-DEFINE_int32(verbose, 0, "detailed debugging information");
+DEFINE_bool(verbose, false, "detailed debugging information");
+
 
 /*
  * validate sid/cid
