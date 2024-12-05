@@ -17,6 +17,11 @@ enum {
 	ISCSI_TASK_COMPLETED,
 };
 
+struct iscsi_connection {
+    unsigned long sid;
+    unsigned long cid;
+};
+
 struct iscsi_stats {
     unsigned int sid;
     unsigned int cid;

@@ -12,6 +12,7 @@
 #include "iscsi_stats_ebpf.h"
 #include "iscsi_stats.skel.h"
 #include "cli_parser.h"
+#include "common.h"
 
 #include <bpf/libbpf.h>
 #include <bpf/bpf.h>
@@ -55,15 +56,14 @@ cleanup:
 
 bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
     struct iscsi_stats stats = {};
-    __u64 key;
-    __u64 next_key;
+    struct iscsi_connection key = {};
+    struct iscsi_connection next_key;
     int err=0;
     int map_fd;
     map_fd = bpf_map__fd(skel->maps.stats_map);
     while (!exiting && !err) {
         sleep(1);
-        key = 0;
-        int scan_count = 0; // 添加计数器，防止死循环
+        memset(&key, 0, sizeof(struct iscsi_connection));
         while (!exiting) {
             err = bpf_map_get_next_key(map_fd, &key, &next_key);
             if (err) {
@@ -74,7 +74,6 @@ bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
                 }
                 break;
             }
-
             err = bpf_map_lookup_elem(map_fd, &next_key, &stats);
             if (err) {
                 fprintf(stderr, "Failed to lookup map element: %s\n", strerror(errno));
@@ -87,13 +86,6 @@ bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
                 }
             }
             key = next_key;
-
-            // 增加扫描计数
-            scan_count++;
-            if (scan_count > 1000) { // 防止死循环
-                fprintf(stderr, "Too many iterations, exiting...\n");
-                break;
-            }
         }
     }
 

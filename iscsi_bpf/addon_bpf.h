@@ -256,11 +256,6 @@ struct iscsi_task {
     void *dd_data;
 };
 
-struct iscsi_connection {
-    __u64 sid;
-    __u64 cid;
-};
-
 struct iscsi_time {
     __u64 queue_time;
     __u64 prep_send_time;
