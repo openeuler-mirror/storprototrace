@@ -18,7 +18,7 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-const volatile int verbose = 0;
+const volatile bool verbose = 0;
 
 #define trace_log(fmt, ...)                    \
     do {                                       \
@@ -177,16 +177,12 @@ int BPF_PROG(iscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *sc)
     struct workqueue_struct *wq;
     bpf_probe_read(&wq, sizeof(wq), &((struct iscsi_host *)host->hostdata)->workq);
 
-    if (!wq) {
-        bpf_printk("Get iscsi work queue error\n");
+    if (!wq)
         return 0;
-    }
 
     struct iscsi_task *task = (struct iscsi_task *)BPF_CORE_READ(iscsi_cmd(sc), task);
-    if (!task) {
-        bpf_printk("Get iscsi task error\n");
+    if (!task)
         return 0;
-    }
 
     struct iscsi_connection conn = {};
     conn.cid = get_cid(task);
@@ -205,8 +201,6 @@ int BPF_PROG(iscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *sc)
             trace_log("Get queue time,now queue = %llu, send = %llu, complete = %llu\n",
                       time->queue_time, time->prep_send_time, time->complete_time);
         }
-    } else {
-        bpf_printk("Failed to find or initialize time struct in iscsi_queuecommand.\n");
     }
 
     return 0;
@@ -228,8 +222,6 @@ int BPF_KPROBE(kpiscsi_prep_scsi_cmd_pdu, struct iscsi_task *task)
             trace_log("Get perp send time,now queue = %llu, send = %llu, complete = %llu\n",
                       time->queue_time, time->prep_send_time, time->complete_time);
         }
-    } else {
-        bpf_printk("Failed to find or initialize time struct in iscsi_prep_scsi_cmd_pdu.\n");
     }
 
     return 0;
