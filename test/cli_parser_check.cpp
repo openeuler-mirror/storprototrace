@@ -22,7 +22,7 @@ using std::string;
 TEST(storprototrace, cli_parser)
 {
 	const char * const_argv[]={"./storprototrace_test", "-cid", "123", "-sid=456", 
-		"--target=test_target", "--initatorname", "test_initatorname"};
+		"--target=test_target", "--initiatorname", "test_initiatorname"};
 	char buf[7][32];
 	char *argv[7];
 	for(int i=0;i<7;++i){
@@ -34,7 +34,7 @@ TEST(storprototrace, cli_parser)
 	EXPECT_EQ(FLAGS_cid, 123);
 	EXPECT_EQ(FLAGS_sid, 456);
 	EXPECT_EQ(string(FLAGS_target), string("test_target"));
-	EXPECT_EQ(string(FLAGS_initatorname), string("test_initatorname"));
+	EXPECT_EQ(string(FLAGS_initiatorname), string("test_initiatorname"));
 }
 
 int main(int argc, char *argv[])

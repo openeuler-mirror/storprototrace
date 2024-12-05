@@ -14,6 +14,7 @@
 #include <iostream>
 #include <libgen.h>
 #include <filesystem>
+#include <fstream>
 
 using namespace std;
 using namespace std::filesystem;
@@ -23,7 +24,7 @@ DEFINE_bool(once, false, "show event only once");
 DEFINE_uint32(cid, 0, "connection id");
 DEFINE_uint32(sid, 0, "session id");
 DEFINE_string(target, "", "target name");
-DEFINE_string(initatorname, "", "initator name");
+DEFINE_string(initiatorname, "", "initiator name");
 DEFINE_int32(verbose, 0, "detailed debugging information");
 
 /*
@@ -67,7 +68,7 @@ bool validate_targetname()
 {
 	gflags::CommandLineFlagInfo info_target;
 
-	if (gflags::GetCommandLineFlagInfo("target name", &info_target) && info_target.is_default)
+	if (gflags::GetCommandLineFlagInfo("target", &info_target) && info_target.is_default)
 		return true;
 
 	if (!info_target.is_default) {
@@ -84,9 +85,48 @@ bool validate_targetname()
 	return true;
 }
 
+/*
+ * validate initiatorname
+ */
+bool validate_initiatorname()
+{
+	gflags::CommandLineFlagInfo info;
+
+	if (gflags::GetCommandLineFlagInfo("initiatorname", &info) && info.is_default)
+		return true;
+
+	if (!info.is_default) {
+		path iscsi_session_prefix = "/sys/class/iscsi_session";
+		std::string target_initiatorname = FLAGS_initiatorname;
+
+		if (!exists(iscsi_session_prefix) || !is_directory(iscsi_session_prefix)) {
+			cout<<gflags::ProgramUsage()<<endl;
+			exit(0);
+		}
+
+		for (const auto& session : directory_iterator(iscsi_session_prefix)) {
+			if (is_directory(session)) {
+				path initiatorname_path = session.path() / "initiatorname";
+
+				if (exists(initiatorname_path) && is_regular_file(initiatorname_path)) {
+					std::ifstream initiatorname_file(initiatorname_path);
+					std::string initiatorname;
+
+					if (std::getline(initiatorname_file, initiatorname)) {
+						if (initiatorname == target_initiatorname)
+							return true;
+						}
+					}
+			}
+		}
+	}
+
+	return false;
+}
+
 bool cli_parser(int argc, char** argv) {
 	ostringstream oss;
-	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-cid CID] [-sid SID] [-target TARGET] [-initatorname INITATORNAME] [-verbose VERBOSE]";
+	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-cid CID] [-sid SID] [-target TARGET] [-initiatorname INITIATORNAME] [-verbose VERBOSE]";
 	oss<<" [-once]";
 	gflags::SetUsageMessage(oss.str());
 	gflags::SetVersionString("version: 1.0-1");
@@ -102,6 +142,11 @@ bool cli_parser(int argc, char** argv) {
 	}
 
 	if (!validate_targetname()) {
+		cout<<gflags::ProgramUsage()<<endl;
+		exit(0);
+	}
+
+	if (!validate_initiatorname()) {
 		cout<<gflags::ProgramUsage()<<endl;
 		exit(0);
 	}
