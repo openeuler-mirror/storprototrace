@@ -65,6 +65,18 @@ int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetn
     return 1;
 }
 
+int filter_initiatorname_print_stats(struct iscsi_stats *stats, const char *initiatorname)
+{
+    if (strcmp(stats->initiator_name, initiatorname) == 0) {
+        printf("initiatorname: %s\n", stats->initiator_name);
+        print_stats(stats);
+        printf("\n\n");
+        return 0;
+    }
+
+    return 1;
+}
+
 int filter_sid_print_stats(struct iscsi_stats *stats, const unsigned int sid) {
     if (stats->sid == sid) {
         printf("sid: %u\n", stats->sid);
@@ -107,6 +119,14 @@ int filter_apply(struct iscsi_stats *stats)
 		return 0;
 	}
     }
+
+    if (GetCommandLineFlagInfo("initiatorname", &info) && !info.is_default) {
+        has_filter = true;
+
+        if (!filter_initiatorname_print_stats(stats, FLAGS_initiatorname.c_str()))
+			return 0;
+    }
+
     if(!has_filter)
         print_stats(stats);
     return 0;
