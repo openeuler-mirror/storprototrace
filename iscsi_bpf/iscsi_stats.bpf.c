@@ -217,7 +217,7 @@ int BPF_KPROBE(kpiscsi_prep_scsi_cmd_pdu, struct iscsi_task *task)
 
     struct iscsi_time *time = bpf_map_lookup_elem(&time_map, &conn);
     if (time) {
-        if (time->prep_send_time == 0) {
+        if (time->queue_time != 0 && time->prep_send_time == 0) {
             time->prep_send_time = bpf_ktime_get_ns();
             trace_log("Get perp send time,now queue = %llu, send = %llu, complete = %llu\n",
                       time->queue_time, time->prep_send_time, time->complete_time);
@@ -272,37 +272,36 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
                   time->queue_time, time->prep_send_time, time->complete_time);
 
         int bytes = 0;
+        unsigned long interval = 0;
         bpf_probe_read(&bytes, sizeof(bytes), &sc->sdb.length);
 
-        if (time->queue_time != 0) {
-            stats->waiting = time->prep_send_time - time->queue_time;
-            stats->waiting_cycle++;
-            if (stats->waiting > stats->max_waiting) {
-                stats->max_waiting = stats->waiting;
-            }
+		if (time->prep_send_time == 0) {
+			; // abnormal route, do nothing here
+		} else {
+			interval = time->prep_send_time - time->queue_time;
+			stats->waiting += interval;
+			if (interval > stats->max_waiting)
+				stats->max_waiting = interval;
 
-            stats->complete = time->complete_time - time->queue_time;
-            stats->complete_cycle++;
-            if (stats->complete > stats->max_complete) {
-                stats->max_complete = stats->complete;
-            }
-        }
+			interval = time->complete_time - time->queue_time;
+			stats->complete += interval;
+			if (interval > stats->max_complete)
+				stats->max_complete = interval;
 
-        if (time->prep_send_time != 0) {
-            stats->sending = time->complete_time - time->prep_send_time;
-            stats->send_cycle++;
-            if (stats->sending > stats->max_sending) {
-                stats->max_sending = stats->sending;
-            }
-        }
+			interval = time->complete_time - time->prep_send_time;
+			stats->sending += interval;
+			if (interval > stats->max_sending)
+				stats->max_sending = interval;
 
-        stats->count++;
-        stats->total_bytes += bytes;
+			stats->count++;
+			stats->total_bytes += bytes;
+
+			bpf_map_update_elem(&stats_map, &conn, stats, BPF_EXIST);
+			trace_log("Update stats map, now count = %u, waiting = %llu, sending = %llu, complete = %llu\n",
+					stats->count, stats->waiting, stats->sending, stats->complete);
+		}
 
         // 更新统计信息并删除时间记录
-        bpf_map_update_elem(&stats_map, &conn, stats, BPF_EXIST);
-        trace_log("Update stats map, now count = %u, waiting = %llu, sending = %llu, complete = %llu\n",
-                  stats->count, stats->waiting, stats->sending, stats->complete);
         bpf_map_delete_elem(&time_map, &conn);
     }
 
