@@ -34,6 +34,9 @@ bool iscsi_stats_ebpf_load_and_attach() {
         return false;
     }
 
+	// verbose to ebpf
+	skel->rodata->verbose = FLAGS_verbose;
+
     // load BPF 
     err = iscsi_stats_bpf__load(skel);
     if (err) {
