@@ -32,6 +32,16 @@ TEST(storprototrace, filt_targetname_print_stats)
 	EXPECT_EQ(filter_targetname_print_stats(&stats, "iqn.2013-01.com.openeuler"), 1);
 }
 
+TEST(storprototrace, filt_initiatorname_print_stats)
+{
+	struct iscsi_stats stats;
+	memset(&stats, 0, sizeof(stats));
+	strcpy(stats.initiator_name, "iqn.2024-12.com.openeuler");
+
+	EXPECT_EQ(filter_initiatorname_print_stats(&stats, "iqn.2024-12.com.openeuler"), 0);
+	EXPECT_EQ(filter_initiatorname_print_stats(&stats, "iqn.2024-11.com.openeuler"), 1);
+}
+
 TEST(storprototrace, filter_sid_print_stats)
 {
 	struct iscsi_stats stats;
