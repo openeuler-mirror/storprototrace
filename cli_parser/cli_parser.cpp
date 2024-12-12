@@ -25,6 +25,7 @@ DEFINE_uint32(cid, 0, "connection id");
 DEFINE_uint32(sid, 0, "session id");
 DEFINE_string(target, "", "target name");
 DEFINE_string(initiatorname, "", "initiator name");
+DEFINE_string(lun, "", "lun name");
 DEFINE_bool(verbose, false, "detailed debugging information");
 
 
@@ -122,9 +123,31 @@ bool validate_initiatorname()
 	return false;
 }
 
+/*
+ *  * validate lun
+ *   */
+bool validate_lun()
+{
+        gflags::CommandLineFlagInfo info_lun;
+
+        if (gflags::GetCommandLineFlagInfo("lun", &info_lun) && info_lun.is_default)
+                return true;
+
+        ostringstream oss;
+
+        oss << "/etc/iscsi/nodes/" << FLAGS_lun;
+
+        if (!exists(oss.str())) {
+                cout<<gflags::ProgramUsage()<<endl;
+                exit(0);
+        }
+
+        return true;
+}
+
 bool cli_parser(int argc, char** argv) {
 	ostringstream oss;
-	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-cid CID] [-sid SID] [-target TARGET] [-initiatorname INITIATORNAME] [-verbose VERBOSE]";
+	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-cid CID] [-sid SID] [-target TARGET] [-initiatorname INITIATORNAME] [-verbose VERBOSE] [-lun LUN]";
 	oss<<" [-once]";
 	gflags::SetUsageMessage(oss.str());
 	gflags::SetVersionString("version: 1.0-1");
@@ -145,6 +168,11 @@ bool cli_parser(int argc, char** argv) {
 	}
 
 	if (!validate_initiatorname()) {
+		cout<<gflags::ProgramUsage()<<endl;
+		exit(0);
+	}
+
+	if (!validate_lun()) {
 		cout<<gflags::ProgramUsage()<<endl;
 		exit(0);
 	}
