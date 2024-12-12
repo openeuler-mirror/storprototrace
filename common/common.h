@@ -27,7 +27,7 @@ struct iscsi_stats {
     unsigned int cid;
     char  target_name[64];
     char  initiator_name[64];
-    char  lun[64];
+    unsigned char lun[8];
     unsigned long count;
     unsigned long total_bytes;
     unsigned long waiting;

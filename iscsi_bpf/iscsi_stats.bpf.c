@@ -151,12 +151,18 @@ get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
     return 0;
 }
 
-static void get_lun(struct iscsi_stats *stats, struct iscsi_task *task)
+static inline __attribute__((always_inline)) int
+get_lun(struct iscsi_stats *stats, struct iscsi_task *task)
 {
+    INIT_VAR();
+    USE_VAR(iscsi_task, taskp, 0);
     if (stats == NULL || task == NULL)
-        return;
+        return 1;
 
-    bpf_probe_read_ptr(stats->lun, sizeof(stats->lun), &task->lun);
+    bpf_probe_read(taskp, sizeof(struct iscsi_task), task);
+    bpf_probe_read(stats->lun, sizeof(struct scsi_lun), taskp);
+    bpf_probe_read_ptr(stats->lun, sizeof(stats->lun), BPF_CORE_READ(taskp, lun.scsi_lun));
+    return 0;
 }
 
 static int get_op(struct iscsi_task *task)
@@ -261,6 +267,8 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     get_targetname(stats, task);
     // 获取initiator
     get_initiator(stats, task);
+    // 获取lun
+    get_lun(stats, task);
 
     stats->cid = conn.cid;
     stats->sid = conn.sid;
