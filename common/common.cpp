@@ -37,16 +37,27 @@ int op_is_write(unsigned int op)
 #define bio_data_dir(bi_opf) \
         (op_is_write(bio_op(bi_opf)) ? WRITE : READ)
 
+void format_lun(char *buf, size_t size, uint8_t *lun)
+{
+    int i;
+
+    for (i = 0; i < 8; i++)
+        snprintf(buf++, size--, "%x", lun[i]);
+}
+
+
 void print_stats(struct iscsi_stats *stats) {
 
 	char waiting[64];
 	char sending[64];
 	char complete[64];
+	char buf[32];
 	snprintf(waiting, sizeof(waiting), "%lu(%lu)", stats->waiting, stats->waiting_cycle);
 	snprintf(sending, sizeof(sending), "%lu(%lu)", stats->sending, stats->send_cycle);
 	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
+	format_lun(buf, sizeof(buf), stats->lun);
 
-	printf("%-5lu %-5lu | %-10lu %-10lu | %-15s %-15s %-15s | %-15lu %-15lu %-15lu | %-64s | %-64s\n",
+	printf("%-5lu %-5lu | %-10lu %-10lu | %-15s %-15s %-15s | %-15lu %-15lu %-15lu | %-64s | %-64s | %-32s\n",
 			stats->sid, stats->cid,
 			stats->count, stats->total_bytes,
 			waiting, sending, complete,
@@ -54,7 +65,8 @@ void print_stats(struct iscsi_stats *stats) {
 			stats->max_sending,
 			stats->max_complete,
 			stats->initiator_name,
-			stats->target_name);
+			stats->target_name,
+			buf);
 }
 
 int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetname) {
