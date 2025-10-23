@@ -30,13 +30,12 @@ fi
 
 deb_deps=(
   clang
-  libbpf
-  libbpf-devel
+  libbpf-dev
   bpftool
   make
   cmake
-  gtest-devel
-  gflags-devel
+  libgtest-dev
+  libgflags-dev
 )
 
 # Add support for centos/rhel/openEuler/suse
