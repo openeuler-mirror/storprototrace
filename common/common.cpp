@@ -57,7 +57,7 @@ void print_stats(struct iscsi_stats *stats) {
 	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
 	format_lun(buf, sizeof(buf), stats->lun);
 
-	printf("%-5lu %-5lu | %-10lu %-10lu | %-15s %-15s %-15s | %-15lu %-15lu %-15lu | %-64s | %-64s | %-32s\n",
+	printf("%-5u %-5u | %-10lu %-10lu | %-15s %-15s %-15s | %-15lu %-15lu %-15lu | %-64s | %-64s | %-32s\n",
 			stats->sid, stats->cid,
 			stats->count, stats->total_bytes,
 			waiting, sending, complete,
