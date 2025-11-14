@@ -81,6 +81,15 @@ int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetn
 
 int filter_initiatorname_print_stats(struct iscsi_stats *stats, const char *initiatorname)
 {
+    if(stats == NULL){
+        printf("stats is NULL!\n");
+        return 0;
+    }
+    else if(initiatorname == NULL){
+        printf("initiatorname is NUll!\n");
+        return 0;
+    }
+
     if (strcmp(stats->initiator_name, initiatorname) == 0) {
         printf("initiatorname: %s\n", stats->initiator_name);
         print_stats(stats);
