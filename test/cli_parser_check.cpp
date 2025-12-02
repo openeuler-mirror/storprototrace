@@ -30,7 +30,7 @@ TEST(storprototrace, cli_parser)
 		argv[i]=buf[i];
 	}
 
-	EXPECT_EQ(cli_parser(7, (char**)argv), true);
+	EXPECT_EQ(cli_parser(7, const_cast<char**>(argv)), true);
 	EXPECT_EQ(FLAGS_cid, 123);
 	EXPECT_EQ(FLAGS_sid, 456);
 	EXPECT_EQ(string(FLAGS_target), string("test_target"));
