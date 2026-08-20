@@ -4,6 +4,11 @@ project(test)
 
 find_package(GTest REQUIRED)
 
+include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common
+        ${CMAKE_CURRENT_SOURCE_DIR}/../cli_parser
+)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 --coverage")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
 
