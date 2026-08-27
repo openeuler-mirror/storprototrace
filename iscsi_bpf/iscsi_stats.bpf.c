@@ -160,7 +160,6 @@ get_lun(struct iscsi_stats *stats, struct iscsi_task *task)
         return 1;
 
     bpf_probe_read(taskp, sizeof(struct iscsi_task), task);
-    bpf_probe_read(stats->lun, sizeof(struct scsi_lun), taskp);
     bpf_probe_read_ptr(stats->lun, sizeof(stats->lun), BPF_CORE_READ(taskp, lun.scsi_lun));
     return 0;
 }
