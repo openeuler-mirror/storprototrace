@@ -282,7 +282,8 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
         unsigned long interval = 0;
         bpf_probe_read(&bytes, sizeof(bytes), &sc->sdb.length);
 
-		if (time->prep_send_time == 0 ||
+		if (time->queue_time == 0 ||
+		    time->prep_send_time == 0 ||
 		    time->prep_send_time < time->queue_time ||
 		    time->complete_time < time->prep_send_time) {
 			; // abnormal route, do nothing here
