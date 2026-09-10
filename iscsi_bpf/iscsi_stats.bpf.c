@@ -346,11 +346,12 @@ int BPF_PROG(block_rq_complete, struct request *rq, int error, unsigned int nr_b
 		req->complete_time = bpf_ktime_get_ns();
 		req->result = error;
 
-		bpf_map_update_elem(&request_map, &rq, req, BPF_NOEXIST);
+		// The block request is complete, delete it from the map to prevent memory leak
+		bpf_map_delete_elem(&request_map, &rq);
 	}
 
 	if (error)
-		trace_log("block_rq_complete rq 0x%llu error %d", rq, error);
+		trace_log("block_rq_complete rq 0x%p error %d", rq, error);
 
 	return 0;
 }
