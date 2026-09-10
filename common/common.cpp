@@ -39,10 +39,14 @@ int op_is_write(unsigned int op)
 
 void format_lun(char *buf, size_t size, uint8_t *lun)
 {
-    int i;
+    if (size < 17) {
+        if (size > 0)
+            buf[0] = '\0';
+        return;
+    }
 
-    for (i = 0; i < 8; i++)
-        snprintf(buf++, size--, "%x", lun[i]);
+    for (int i = 0; i < 8; i++)
+        snprintf(buf + (i * 2), size - (i * 2), "%02x", lun[i]);
 }
 
 
@@ -120,6 +124,21 @@ int filter_cid_print_stats(struct iscsi_stats *stats, const unsigned int cid) {
     return 1;
 }
 
+int filter_lun_print_stats(struct iscsi_stats *stats, const char *lun)
+{
+    char stats_lun[17];
+
+    format_lun(stats_lun, sizeof(stats_lun), stats->lun);
+    if (strcasecmp(stats_lun, lun) == 0) {
+        printf("lun: %s\n", stats_lun);
+        print_stats(stats);
+        printf("\n\n");
+        return 0;
+    }
+
+    return 1;
+}
+
 int filter_apply(struct iscsi_stats *stats)
 {
     bool has_filter = false;
@@ -133,21 +152,27 @@ int filter_apply(struct iscsi_stats *stats)
     if(GetCommandLineFlagInfo("sid" ,&info) && !info.is_default) {
         has_filter = true;
         if(!filter_sid_print_stats(stats, FLAGS_sid)) {
-		return 0;
-	}
+            return 0;
+        }
     }
     if(GetCommandLineFlagInfo("target" ,&info) && !info.is_default) {
         has_filter = true;
         if(!filter_targetname_print_stats(stats, FLAGS_target.c_str())) {
-		return 0;
-	}
+            return 0;
+        }
     }
 
     if (GetCommandLineFlagInfo("initiatorname", &info) && !info.is_default) {
         has_filter = true;
 
         if (!filter_initiatorname_print_stats(stats, FLAGS_initiatorname.c_str()))
-			return 0;
+            return 0;
+    }
+
+    if (GetCommandLineFlagInfo("lun", &info) && !info.is_default) {
+        has_filter = true;
+        if (!filter_lun_print_stats(stats, FLAGS_lun.c_str()))
+            return 0;
     }
 
     if(!has_filter)

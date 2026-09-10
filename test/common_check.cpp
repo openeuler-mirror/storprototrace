@@ -62,6 +62,18 @@ TEST(storprototrace, filter_cid_print_stats)
 	EXPECT_EQ(filter_cid_print_stats(&stats, 234), 1);
 }
 
+TEST(storprototrace, filter_lun_print_stats)
+{
+	struct iscsi_stats stats;
+	const unsigned char lun[] = {0x00, 0x00, 0x00, 0x00, 0x12, 0x03, 0xab, 0xcd};
+
+	memset(&stats, 0, sizeof(stats));
+	memcpy(stats.lun, lun, sizeof(lun));
+
+	EXPECT_EQ(filter_lun_print_stats(&stats, "000000001203abcd"), 0);
+	EXPECT_EQ(filter_lun_print_stats(&stats, "000000001203abce"), 1);
+}
+
 int main(int argc, char *argv[])
 {
 	::testing::InitGoogleTest(&argc, argv);
