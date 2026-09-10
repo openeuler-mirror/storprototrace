@@ -15,6 +15,7 @@
 #include <libgen.h>
 #include <filesystem>
 #include <fstream>
+#include <cctype>
 
 using namespace std;
 using namespace std::filesystem;
@@ -25,7 +26,7 @@ DEFINE_uint32(cid, 0, "connection id");
 DEFINE_uint32(sid, 0, "session id");
 DEFINE_string(target, "", "target name");
 DEFINE_string(initiatorname, "", "initiator name");
-DEFINE_string(lun, "", "lun name");
+DEFINE_string(lun, "", "SCSI LUN as 16 hexadecimal digits");
 DEFINE_bool(verbose, false, "detailed debugging information");
 
 
@@ -133,13 +134,16 @@ bool validate_lun()
         if (gflags::GetCommandLineFlagInfo("lun", &info_lun) && info_lun.is_default)
                 return true;
 
-        ostringstream oss;
+        if (FLAGS_lun.size() != 16) {
+                cout << "lun must contain exactly 16 hexadecimal digits" << endl;
+                return false;
+        }
 
-        oss << "/etc/iscsi/nodes/" << FLAGS_lun;
-
-        if (!exists(oss.str())) {
-                cout<<gflags::ProgramUsage()<<endl;
-                exit(0);
+        for (unsigned char ch : FLAGS_lun) {
+                if (!isxdigit(ch)) {
+                        cout << "lun must contain exactly 16 hexadecimal digits" << endl;
+                        return false;
+                }
         }
 
         return true;
@@ -179,4 +183,3 @@ bool cli_parser(int argc, char** argv) {
 
 	return true;
 }
-
