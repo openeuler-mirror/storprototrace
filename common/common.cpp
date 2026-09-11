@@ -141,41 +141,33 @@ int filter_lun_print_stats(struct iscsi_stats *stats, const char *lun)
 
 int filter_apply(struct iscsi_stats *stats)
 {
-    bool has_filter = false;
     gflags::CommandLineFlagInfo info;
     if(GetCommandLineFlagInfo("cid" ,&info) && !info.is_default) {
-        has_filter = true;
-        if(!filter_cid_print_stats(stats, FLAGS_cid)) {
+        if (stats->cid != FLAGS_cid)
             return 0;
-        }
     }
     if(GetCommandLineFlagInfo("sid" ,&info) && !info.is_default) {
-        has_filter = true;
-        if(!filter_sid_print_stats(stats, FLAGS_sid)) {
+        if (stats->sid != FLAGS_sid)
             return 0;
-        }
     }
     if(GetCommandLineFlagInfo("target" ,&info) && !info.is_default) {
-        has_filter = true;
-        if(!filter_targetname_print_stats(stats, FLAGS_target.c_str())) {
+        if (strcmp(stats->target_name, FLAGS_target.c_str()) != 0)
             return 0;
-        }
     }
 
     if (GetCommandLineFlagInfo("initiatorname", &info) && !info.is_default) {
-        has_filter = true;
-
-        if (!filter_initiatorname_print_stats(stats, FLAGS_initiatorname.c_str()))
+        if (strcmp(stats->initiator_name, FLAGS_initiatorname.c_str()) != 0)
             return 0;
     }
 
     if (GetCommandLineFlagInfo("lun", &info) && !info.is_default) {
-        has_filter = true;
-        if (!filter_lun_print_stats(stats, FLAGS_lun.c_str()))
+        char stats_lun[17];
+
+        format_lun(stats_lun, sizeof(stats_lun), stats->lun);
+        if (strcasecmp(stats_lun, FLAGS_lun.c_str()) != 0)
             return 0;
     }
 
-    if(!has_filter)
-        print_stats(stats);
+    print_stats(stats);
     return 0;
 }
