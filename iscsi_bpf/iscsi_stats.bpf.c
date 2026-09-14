@@ -65,7 +65,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, struct iscsi_connection);
+    __type(key, struct iscsi_stats_key);
     __type(value, struct iscsi_stats);
     __uint(max_entries, 1024);
 } stats_map SEC(".maps");
@@ -151,18 +151,7 @@ get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
     return 0;
 }
 
-static inline __attribute__((always_inline)) int
-get_lun(struct iscsi_stats *stats, struct iscsi_task *task)
-{
-    INIT_VAR();
-    USE_VAR(iscsi_task, taskp, 0);
-    if (stats == NULL || task == NULL)
-        return 1;
-
-    bpf_probe_read(taskp, sizeof(struct iscsi_task), task);
-    bpf_probe_read_ptr(stats->lun, sizeof(stats->lun), BPF_CORE_READ(taskp, lun.scsi_lun));
-    return 0;
-}
+// get_lun removed as it is now read directly into stats_key
 
 static int get_op(struct iscsi_task *task)
 {
@@ -252,10 +241,15 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     conn.cid = get_cid(task);
     conn.sid = get_sid(task);
 
-    stats = bpf_map_lookup_elem(&stats_map, &conn);
+    struct iscsi_stats_key stats_key = {};
+    stats_key.cid = conn.cid;
+    stats_key.sid = conn.sid;
+    bpf_core_read(&stats_key.lun, sizeof(stats_key.lun), &task->lun.scsi_lun);
+
+    stats = bpf_map_lookup_elem(&stats_map, &stats_key);
     if (!stats) {
-        bpf_map_update_elem(&stats_map, &conn, &zero_stats, BPF_NOEXIST);
-        stats = bpf_map_lookup_elem(&stats_map, &conn);
+        bpf_map_update_elem(&stats_map, &stats_key, &zero_stats, BPF_NOEXIST);
+        stats = bpf_map_lookup_elem(&stats_map, &stats_key);
     }
 
     if (stats == NULL) {
@@ -266,8 +260,8 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     get_targetname(stats, task);
     // 获取initiator
     get_initiator(stats, task);
-    // 获取lun
-    get_lun(stats, task);
+    // LUN is already read into stats_key
+    __builtin_memcpy(stats->lun, stats_key.lun, sizeof(stats->lun));
 
     stats->cid = conn.cid;
     stats->sid = conn.sid;
@@ -306,7 +300,7 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
 			stats->count++;
 			stats->total_bytes += bytes;
 
-			bpf_map_update_elem(&stats_map, &conn, stats, BPF_EXIST);
+			bpf_map_update_elem(&stats_map, &stats_key, stats, BPF_EXIST);
 			trace_log("Update stats map, now count = %u, waiting = %llu, sending = %llu, complete = %llu\n",
 					stats->count, stats->waiting, stats->sending, stats->complete);
 		}

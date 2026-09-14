@@ -59,14 +59,14 @@ cleanup:
 
 bool iscsi_stats_ebpf_loop(int(*handle)(struct iscsi_stats *stats)) {
     struct iscsi_stats stats = {};
-    struct iscsi_connection key = {};
-    struct iscsi_connection next_key;
+    struct iscsi_stats_key key = {};
+    struct iscsi_stats_key next_key;
     int err=0;
     int map_fd;
     map_fd = bpf_map__fd(skel->maps.stats_map);
     while (!exiting && !err) {
         sleep(1);
-        memset(&key, 0, sizeof(struct iscsi_connection));
+        memset(&key, 0, sizeof(struct iscsi_stats_key));
         while (!exiting) {
             err = bpf_map_get_next_key(map_fd, &key, &next_key);
             if (err) {
