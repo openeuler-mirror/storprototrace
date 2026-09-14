@@ -22,6 +22,12 @@ struct iscsi_connection {
     unsigned long cid;
 };
 
+struct iscsi_stats_key {
+    unsigned long sid;
+    unsigned long cid;
+    unsigned char lun[8];
+};
+
 struct iscsi_stats {
     unsigned int sid;
     unsigned int cid;
