@@ -28,6 +28,7 @@ DEFINE_string(target, "", "target name");
 DEFINE_string(initiatorname, "", "initiator name");
 DEFINE_string(lun, "", "SCSI LUN as 16 hexadecimal digits");
 DEFINE_bool(verbose, false, "detailed debugging information");
+DEFINE_uint32(interval, 1, "statistics refresh interval in seconds");
 
 
 /*
@@ -149,10 +150,20 @@ bool validate_lun()
         return true;
 }
 
+bool validate_interval()
+{
+        if (FLAGS_interval == 0) {
+                cout << "interval must be greater than zero" << endl;
+                return false;
+        }
+
+        return true;
+}
+
 bool cli_parser(int argc, char** argv) {
 	ostringstream oss;
 	oss<<"Usage: "<<basename(argv[0])<<" [-h] [-cid CID] [-sid SID] [-target TARGET] [-initiatorname INITIATORNAME] [-verbose VERBOSE] [-lun LUN]";
-	oss<<" [-once]";
+	oss<<" [-once] [-interval SEC]";
 	gflags::SetUsageMessage(oss.str());
 	gflags::SetVersionString("version: 1.0-1");
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -179,6 +190,11 @@ bool cli_parser(int argc, char** argv) {
 	if (!validate_lun()) {
 		cout<<gflags::ProgramUsage()<<endl;
 		exit(0);
+	}
+
+	if (!validate_interval()) {
+		cout<<gflags::ProgramUsage()<<endl;
+		exit(1);
 	}
 
 	return true;
