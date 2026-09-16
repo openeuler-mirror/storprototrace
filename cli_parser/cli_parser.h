@@ -21,7 +21,9 @@ DECLARE_string(target);
 DECLARE_string(initiatorname);
 DECLARE_string(lun);
 DECLARE_bool(verbose);
+DECLARE_uint32(interval);
 
 bool cli_parser(int argc, char** argv);
+bool validate_interval();
 
 #endif
