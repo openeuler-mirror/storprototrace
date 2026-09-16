@@ -303,8 +303,6 @@ int BPF_PROG(block_rq_issue, struct request *rq)
 	req = bpf_map_lookup_elem(&request_map, &rq);
 	if (req) {
 		req->dispatch_time = bpf_ktime_get_ns();
-
-		bpf_map_update_elem(&request_map, &rq, req, BPF_NOEXIST);
 	}
 
 	return 0;
