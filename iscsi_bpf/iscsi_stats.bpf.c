@@ -65,6 +65,17 @@ struct {
 } time_map SEC(".maps");
 
 struct {
+    /* A task is allocated inside iscsi_queuecommand, so retain the
+     * command timestamp until iscsi_prep_scsi_cmd_pdu receives the task. */
+    /* Rejected commands do not reach the prep probe; LRU eviction bounds
+     * their retained timestamps without affecting active commands. */
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __type(key, struct scsi_cmnd *);
+    __type(value, __u64);
+    __uint(max_entries, 1024);
+} queue_time_map SEC(".maps");
+
+struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, struct iscsi_stats_key);
     __type(value, struct iscsi_stats);
@@ -84,56 +95,46 @@ static __always_inline int bpf_probe_read_ptr(void *dst, size_t size, const void
 
 static int get_cid(struct iscsi_task *task)
 {
-    struct iscsi_conn *conn;
-    bpf_probe_read(&conn, sizeof(conn), &task->conn);
+    struct iscsi_conn *conn = BPF_CORE_READ(task, conn);
     if (!conn) {
         return 0;
     }
 
-    int cid = 0;
-    bpf_probe_read(&cid, sizeof(cid), &conn->id);
-
-    return cid;
+    return BPF_CORE_READ(conn, id);
 }
 
 static int get_sid(struct iscsi_task *task)
 {
-    struct iscsi_conn *conn;
-    bpf_probe_read(&conn, sizeof(conn), &task->conn);
+    struct iscsi_conn *conn = BPF_CORE_READ(task, conn);
     if (!conn) {
         return 0;
     }
 
-    struct iscsi_session *session;
-    bpf_probe_read(&session, sizeof(session), &conn->session);
+    struct iscsi_session *session = BPF_CORE_READ(conn, session);
     if (!session) {
         return 0;
     }
 
-    struct iscsi_cls_session *cls_session;
-    bpf_probe_read(&cls_session, sizeof(cls_session), &session->cls_session);
+    struct iscsi_cls_session *cls_session = BPF_CORE_READ(session, cls_session);
     if (!cls_session) {
         return 0;
     }
-    int sid = 0;
-    bpf_probe_read(&sid, sizeof(sid), &cls_session->sid);
 
-    return sid;
+    return BPF_CORE_READ(cls_session, sid);
 }
 
 static inline __attribute__((always_inline)) int
 get_targetname(struct iscsi_stats *stats, struct iscsi_task *task)
 {
-    INIT_VAR();
-    USE_VAR(iscsi_task, taskp, 0);
-    USE_VAR(iscsi_conn, conn, 0);
-    USE_VAR(iscsi_session, session, 0);
+    struct iscsi_session *session = BPF_CORE_READ(task, conn, session);
+    char *targetname;
 
-    bpf_probe_read(taskp, sizeof(struct iscsi_task), task);
-    bpf_probe_read(conn, sizeof(struct iscsi_conn), taskp->conn);
-    bpf_probe_read(session, sizeof(struct iscsi_session), conn->session);
+    if (!session)
+        return 1;
+
+    targetname = BPF_CORE_READ(session, targetname);
     bpf_probe_read_str(stats->target_name, sizeof(stats->target_name),
-                        session->targetname);
+                        targetname);
 
     return 0;
 }
@@ -141,14 +142,11 @@ get_targetname(struct iscsi_stats *stats, struct iscsi_task *task)
 static inline __attribute__((always_inline)) int
 get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
 {
-    INIT_VAR();
-    USE_VAR(iscsi_task, taskp, 0);
     if (stats == NULL || task == NULL)
         return 1;
 
-    bpf_probe_read(taskp, sizeof(struct iscsi_task), task);
     bpf_probe_read_str(stats->initiator_name, sizeof(stats->initiator_name),
-                        BPF_CORE_READ(taskp, conn, session, initiatorname));
+                        BPF_CORE_READ(task, conn, session, initiatorname));
     return 0;
 }
 
@@ -166,39 +164,32 @@ static int get_op(struct iscsi_task *task)
     return op;
 }
 
-SEC("fexit/iscsi_queuecommand")
-int BPF_PROG(iscsi_queuecommand, struct Scsi_Host *host, struct scsi_cmnd *sc)
+SEC("fentry/iscsi_queuecommand")
+int BPF_PROG(iscsi_queuecommand_enter, struct Scsi_Host *host, struct scsi_cmnd *sc)
 {
-    struct workqueue_struct *wq;
-    bpf_probe_read(&wq, sizeof(wq), &((struct iscsi_host *)host->hostdata)->workq);
+    __u64 queue_time = bpf_ktime_get_ns();
 
-    if (!wq)
-        return 0;
-
-    struct iscsi_task *task = (struct iscsi_task *)BPF_CORE_READ(iscsi_cmd(sc), task);
-    if (!task)
-        return 0;
-
-    struct iscsi_time time = {};
-    time.queue_time = bpf_ktime_get_ns();
-    bpf_map_update_elem(&time_map, &task, &time, BPF_ANY);
-    trace_log("Get queue time,now queue = %llu\n", time.queue_time);
+    bpf_map_update_elem(&queue_time_map, &sc, &queue_time, BPF_ANY);
+    trace_log("Get queue time, now queue = %llu\n", queue_time);
 
     return 0;
 }
 
-
 SEC("kprobe/iscsi_prep_scsi_cmd_pdu")
 int BPF_KPROBE(kpiscsi_prep_scsi_cmd_pdu, struct iscsi_task *task)
 {
-    struct iscsi_time *time = bpf_map_lookup_elem(&time_map, &task);
-    if (time) {
-        if (time->queue_time != 0 && time->prep_send_time == 0) {
-            time->prep_send_time = bpf_ktime_get_ns();
-            trace_log("Get perp send time,now queue = %llu, send = %llu, complete = %llu\n",
-                      time->queue_time, time->prep_send_time, time->complete_time);
-        }
-    }
+    struct scsi_cmnd *sc = BPF_CORE_READ(task, sc);
+    __u64 *queue_time = bpf_map_lookup_elem(&queue_time_map, &sc);
+    if (!queue_time)
+        return 0;
+
+    struct iscsi_time time = {};
+    time.queue_time = *queue_time;
+    time.prep_send_time = bpf_ktime_get_ns();
+    bpf_map_update_elem(&time_map, &task, &time, BPF_ANY);
+    bpf_map_delete_elem(&queue_time_map, &sc);
+    trace_log("Get prep send time, now queue = %llu, send = %llu\n",
+              time.queue_time, time.prep_send_time);
 
     return 0;
 }
