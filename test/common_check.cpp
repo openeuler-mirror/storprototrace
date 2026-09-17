@@ -22,6 +22,12 @@ TEST(storprototrace, op_is_write)
 	EXPECT_EQ(op_is_write(5), 1);
 }
 
+TEST(storprototrace, iscsi_direction_name)
+{
+	EXPECT_STREQ(iscsi_direction_name(ISCSI_IO_READ), "Read");
+	EXPECT_STREQ(iscsi_direction_name(ISCSI_IO_WRITE), "Write");
+}
+
 TEST(storprototrace, filt_targetname_print_stats)
 {
 	struct iscsi_stats stats;

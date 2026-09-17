@@ -34,6 +34,11 @@ int op_is_write(unsigned int op)
         return (op & 1);
 }
 
+const char *iscsi_direction_name(unsigned char direction)
+{
+        return direction == ISCSI_IO_WRITE ? "Write" : "Read";
+}
+
 #define bio_data_dir(bi_opf) \
         (op_is_write(bio_op(bi_opf)) ? WRITE : READ)
 
@@ -56,13 +61,15 @@ void print_stats(struct iscsi_stats *stats) {
 	char sending[64];
 	char complete[64];
 	char buf[32];
+	const char *direction = iscsi_direction_name(stats->direction);
 	snprintf(waiting, sizeof(waiting), "%lu(%lu)", stats->waiting, stats->waiting_cycle);
 	snprintf(sending, sizeof(sending), "%lu(%lu)", stats->sending, stats->send_cycle);
 	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
 	format_lun(buf, sizeof(buf), stats->lun);
 
-	printf("%-5u %-5u | %-10lu %-10lu | %-15s %-15s %-15s | %-15lu %-15lu %-15lu | %-64s | %-64s | %-32s\n",
+	printf("%-5u %-5u | %-5s | %-10lu %-10lu | %-15s %-15s %-15s | %-15lu %-15lu %-15lu | %-64s | %-64s | %-32s\n",
 			stats->sid, stats->cid,
+			direction,
 			stats->count, stats->total_bytes,
 			waiting, sending, complete,
 			stats->max_waiting,

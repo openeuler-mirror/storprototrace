@@ -152,14 +152,14 @@ get_initiator(struct iscsi_stats *stats, struct iscsi_task *task)
 
 // get_lun removed as it is now read directly into stats_key
 
-static int get_op(struct iscsi_task *task)
+static int get_op(struct scsi_cmnd *sc)
 {
-    int flag = 0;
-    int op = OP_READ;
+    int flag = DMA_NONE;
+    int op = ISCSI_IO_READ;
 
-    flag = (int)BPF_CORE_READ(task, sc->sc_data_direction);
-    if (op_is_write(flag))
-        op = OP_WRITE;
+    bpf_core_read(&flag, sizeof(flag), &sc->sc_data_direction);
+    if (flag == DMA_TO_DEVICE)
+        op = ISCSI_IO_WRITE;
 
     return op;
 }
@@ -218,6 +218,7 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     stats_key.cid = conn.cid;
     stats_key.sid = conn.sid;
     bpf_core_read(&stats_key.lun, sizeof(stats_key.lun), &task->lun.scsi_lun);
+    stats_key.direction = get_op(sc);
 
     stats = bpf_map_lookup_elem(&stats_map, &stats_key);
     if (!stats) {
@@ -235,6 +236,7 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     get_initiator(stats, task);
     // LUN is already read into stats_key
     __builtin_memcpy(stats->lun, stats_key.lun, sizeof(stats->lun));
+    stats->direction = stats_key.direction;
 
     stats->cid = conn.cid;
     stats->sid = conn.sid;
