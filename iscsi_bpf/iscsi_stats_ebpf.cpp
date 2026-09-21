@@ -38,6 +38,7 @@ static bool same_stats_key(const struct iscsi_stats_key *left,
                            const struct iscsi_stats_key *right)
 {
     return left->sid == right->sid && left->cid == right->cid &&
+           left->direction == right->direction &&
            memcmp(left->lun, right->lun, sizeof(left->lun)) == 0;
 }
 

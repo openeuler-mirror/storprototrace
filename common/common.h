@@ -17,6 +17,11 @@ enum {
 	ISCSI_TASK_COMPLETED,
 };
 
+enum iscsi_io_direction {
+    ISCSI_IO_READ,
+    ISCSI_IO_WRITE,
+};
+
 struct iscsi_connection {
     unsigned long sid;
     unsigned long cid;
@@ -26,6 +31,7 @@ struct iscsi_stats_key {
     unsigned long sid;
     unsigned long cid;
     unsigned char lun[8];
+    unsigned char direction;
 };
 
 struct iscsi_stats {
@@ -34,6 +40,7 @@ struct iscsi_stats {
     char  target_name[64];
     char  initiator_name[64];
     unsigned char lun[8];
+    unsigned char direction;
     unsigned long count;
     unsigned long total_bytes;
     unsigned long waiting;
@@ -48,6 +55,7 @@ struct iscsi_stats {
 };
 
 extern int op_is_write(unsigned int op);
+const char *iscsi_direction_name(unsigned char direction);
 
 void print_stats(struct iscsi_stats *stats);
 int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetname);
