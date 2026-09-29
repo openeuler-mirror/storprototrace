@@ -27,35 +27,6 @@ const volatile bool verbose = 0;
     } while(0)
 
 
-#define DEFINE_VAR(TYPE, SIZE)			\
-struct {					\
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);\
-	__uint(max_entries, SIZE);		\
-	__type(key, uint32_t);			\
-	__type(value, struct TYPE);		\
-} TYPE SEC(".maps");
-
-#define INIT_VAR() \
-uint32_t VAR_KEY=0;
-
-#define USE_VAR(TYPE, NAME, INDEX)						\
-VAR_KEY=INDEX;									\
-struct TYPE *NAME = bpf_map_lookup_elem(&TYPE, &VAR_KEY); if(!NAME) return 0;
-
-DEFINE_VAR(iscsi_task, 1);
-DEFINE_VAR(iscsi_conn, 1);
-DEFINE_VAR(iscsi_session, 1);
-
-static inline void *scsi_cmd_priv(struct scsi_cmnd *cmd)
-{
-    return cmd + 1;
-}
-
-static inline struct iscsi_cmd *iscsi_cmd(struct scsi_cmnd *cmd)
-{
-    return scsi_cmd_priv(cmd);
-}
-
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     /* Each iSCSI task has an independent latency timeline. */
@@ -88,10 +59,6 @@ struct {
 	__type(value, struct request_info);
 	__uint(max_entries, 1024);
 } request_map SEC(".maps");
-
-static __always_inline int bpf_probe_read_ptr(void *dst, size_t size, const void *src) {
-    return bpf_probe_read_kernel(dst, size, src);
-}
 
 static int get_cid(struct iscsi_task *task)
 {
@@ -164,12 +131,24 @@ static int get_op(struct scsi_cmnd *sc)
     return op;
 }
 
+static __always_inline void cleanup_task_timestamps(struct iscsi_task *task)
+{
+    struct scsi_cmnd *sc = BPF_CORE_READ(task, sc);
+
+    bpf_map_delete_elem(&time_map, &task);
+    if (sc)
+        bpf_map_delete_elem(&queue_time_map, &sc);
+}
+
 SEC("fentry/iscsi_queuecommand")
 int BPF_PROG(iscsi_queuecommand_enter, struct Scsi_Host *host, struct scsi_cmnd *sc)
 {
     __u64 queue_time = bpf_ktime_get_ns();
 
-    bpf_map_update_elem(&queue_time_map, &sc, &queue_time, BPF_ANY);
+    if (bpf_map_update_elem(&queue_time_map, &sc, &queue_time, BPF_ANY)) {
+        trace_log("Failed to save queue time for sc 0x%llx\n", (__u64)sc);
+        return 0;
+    }
     trace_log("Get queue time, now queue = %llu\n", queue_time);
 
     return 0;
@@ -186,7 +165,11 @@ int BPF_KPROBE(kpiscsi_prep_scsi_cmd_pdu, struct iscsi_task *task)
     struct iscsi_time time = {};
     time.queue_time = *queue_time;
     time.prep_send_time = bpf_ktime_get_ns();
-    bpf_map_update_elem(&time_map, &task, &time, BPF_ANY);
+    if (bpf_map_update_elem(&time_map, &task, &time, BPF_ANY)) {
+        trace_log("Failed to save prep time for task 0x%llx\n", (__u64)task);
+        bpf_map_delete_elem(&queue_time_map, &sc);
+        return 0;
+    }
     bpf_map_delete_elem(&queue_time_map, &sc);
     trace_log("Get prep send time, now queue = %llu, send = %llu\n",
               time.queue_time, time.prep_send_time);
@@ -202,11 +185,16 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     struct iscsi_stats zero_stats = {};
     struct iscsi_stats *stats;
 
-    if (state != ISCSI_TASK_COMPLETED) 
+    if (state != ISCSI_TASK_COMPLETED) {
+        trace_log("Discard incomplete task 0x%llx, state = %d\n",
+                  (__u64)task, state);
+        cleanup_task_timestamps(task);
         return 0;
+    }
 
-    bpf_probe_read(&sc, sizeof(sc), &task->sc);
+    sc = BPF_CORE_READ(task, sc);
     if (!sc) {
+        cleanup_task_timestamps(task);
         return 0;
     }
 
@@ -227,6 +215,7 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
     }
 
     if (stats == NULL) {
+        cleanup_task_timestamps(task);
         return 0;
     }
 
@@ -280,9 +269,11 @@ int BPF_KPROBE(kpiscsi_complete_task, struct iscsi_task *task, int state)
 					stats->count, stats->waiting, stats->sending, stats->complete);
 		}
 
-        // 更新统计信息并删除时间记录
-        bpf_map_delete_elem(&time_map, &task);
     }
+
+    /* Every iscsi_complete_task call ends this task's timestamp lifecycle,
+     * even when no valid latency sample was produced. */
+    cleanup_task_timestamps(task);
 
     return 0;
 }
