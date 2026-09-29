@@ -39,6 +39,14 @@ const char *iscsi_direction_name(unsigned char direction)
         return direction == ISCSI_IO_WRITE ? "Write" : "Read";
 }
 
+unsigned long latency_average(unsigned long total, unsigned long samples)
+{
+        if (samples == 0)
+                return 0;
+
+        return total / samples;
+}
+
 #define bio_data_dir(bi_opf) \
         (op_is_write(bio_op(bi_opf)) ? WRITE : READ)
 
@@ -57,21 +65,23 @@ void format_lun(char *buf, size_t size, uint8_t *lun)
 
 void print_stats(struct iscsi_stats *stats) {
 
-	char waiting[64];
-	char sending[64];
-	char complete[64];
 	char buf[32];
 	const char *direction = iscsi_direction_name(stats->direction);
-	snprintf(waiting, sizeof(waiting), "%lu(%lu)", stats->waiting, stats->waiting_cycle);
-	snprintf(sending, sizeof(sending), "%lu(%lu)", stats->sending, stats->send_cycle);
-	snprintf(complete, sizeof(complete), "%lu(%lu)", stats->complete, stats->complete_cycle);
+	unsigned long avg_waiting = latency_average(stats->waiting, stats->count);
+	unsigned long avg_sending = latency_average(stats->sending, stats->count);
+	unsigned long avg_complete = latency_average(stats->complete, stats->count);
 	format_lun(buf, sizeof(buf), stats->lun);
 
-	printf("%-5u %-5u | %-5s | %-10lu %-10lu | %-15s %-15s %-15s | %-15lu %-15lu %-15lu | %-64s | %-64s | %-32s\n",
+	printf("%-5u %-5u | %-5s | %-10lu %-10lu | %-15lu %-15lu %-15lu | %-15lu %-15lu %-15lu | %-15lu %-15lu %-15lu | %-64s | %-64s | %-32s\n",
 			stats->sid, stats->cid,
 			direction,
 			stats->count, stats->total_bytes,
-			waiting, sending, complete,
+			stats->waiting,
+			stats->sending,
+			stats->complete,
+			avg_waiting,
+			avg_sending,
+			avg_complete,
 			stats->max_waiting,
 			stats->max_sending,
 			stats->max_complete,

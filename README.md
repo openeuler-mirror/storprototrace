@@ -306,12 +306,10 @@ make
 ```
 [root@localhost build]# ./storprototrace
 BPF program loaded and attached successfully.
-Connect    | RW                   | Toal Interval(ns)                              | Max Interval(ns)                                  
-sid   cid  | Count      total     | Waiting         Sending         Complete       | Waiting         Sending         Complete       
-1     0    | 1          8192      | 70035(1)        972210(1)       1042245(1)     | 70035           972210          1042245        
-1     0    | 4          36864     | 25012(4)        597588(4)       622600(4)      | 40967           1159767         1195784        
-1     0    | 3          32768     | 35049(3)        1052350(2)      1087399(3)     | 18446740847831477010 1087001         1776127        
-1     0    | 1          8192      | 31413(1)        829833(1)       861246(1)      | 31413           829833          861246
+Connect     | RW    | I/O                   | Total Interval(ns)                              | Average Interval(ns)                            | Max Interval(ns)
+sid   cid   | type  | Count      total      | Waiting         Sending         Complete        | Waiting         Sending         Complete        | Waiting         Sending         Complete
+1     0     | Read  | 4          16384      | 100000          500000          600000          | 25000           125000          150000          | 40000           180000          210000
+1     0     | Write | 2          8192       | 60000           260000          320000          | 30000           130000          160000          | 35000           150000          180000
 ```
 
 
@@ -323,4 +321,3 @@ sid   cid  | Count      total     | Waiting         Sending         Complete    
 + 支持统计target
 + 支持统计initiator
 + 支持统计读写操作
-

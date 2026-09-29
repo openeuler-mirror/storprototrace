@@ -28,6 +28,14 @@ TEST(storprototrace, iscsi_direction_name)
 	EXPECT_STREQ(iscsi_direction_name(ISCSI_IO_WRITE), "Write");
 }
 
+TEST(storprototrace, latency_average)
+{
+	EXPECT_EQ(latency_average(0, 0), 0UL);
+	EXPECT_EQ(latency_average(100, 0), 0UL);
+	EXPECT_EQ(latency_average(100, 4), 25UL);
+	EXPECT_EQ(latency_average(103, 4), 25UL);
+}
+
 TEST(storprototrace, filt_targetname_print_stats)
 {
 	struct iscsi_stats stats;
