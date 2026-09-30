@@ -44,11 +44,8 @@ struct iscsi_stats {
     unsigned long count;
     unsigned long total_bytes;
     unsigned long waiting;
-    unsigned long waiting_cycle;
     unsigned long sending;
-    unsigned long send_cycle;
     unsigned long complete;
-    unsigned long complete_cycle;
     unsigned long max_waiting;
     unsigned long max_sending;
     unsigned long max_complete;
@@ -56,6 +53,7 @@ struct iscsi_stats {
 
 extern int op_is_write(unsigned int op);
 const char *iscsi_direction_name(unsigned char direction);
+unsigned long latency_average(unsigned long total, unsigned long samples);
 
 void print_stats(struct iscsi_stats *stats);
 int filter_targetname_print_stats(struct iscsi_stats *stats, const char *targetname);
