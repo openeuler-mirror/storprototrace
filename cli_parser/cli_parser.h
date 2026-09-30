@@ -24,6 +24,10 @@ DECLARE_bool(verbose);
 DECLARE_uint32(interval);
 
 bool cli_parser(int argc, char** argv);
+bool validate_sid_cid();
+bool validate_targetname();
+bool validate_initiatorname();
+bool validate_lun();
 bool validate_interval();
 
 #endif
