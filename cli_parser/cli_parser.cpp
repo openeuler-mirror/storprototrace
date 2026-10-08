@@ -80,8 +80,8 @@ bool validate_targetname()
 	oss << "/etc/iscsi/nodes/" << FLAGS_target;
 
 	if (!exists(oss.str())) {
-		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
+		cout << "can not find target: " << FLAGS_target << endl;
+		return false;
 	}
 
 	return true;
@@ -101,8 +101,8 @@ bool validate_initiatorname()
 	std::string target_initiatorname = FLAGS_initiatorname;
 
 	if (!exists(iscsi_session_prefix) || !is_directory(iscsi_session_prefix)) {
-		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
+		cout << "can not find iSCSI sessions" << endl;
+		return false;
 	}
 
 	for (const auto& session : directory_iterator(iscsi_session_prefix)) {
@@ -122,6 +122,7 @@ bool validate_initiatorname()
 				return true;
 	}
 
+	cout << "can not find initiator: " << FLAGS_initiatorname << endl;
 	return false;
 }
 
@@ -174,27 +175,27 @@ bool cli_parser(int argc, char** argv) {
 
 	if (!validate_sid_cid()) {
 		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
+		return false;
 	}
 
 	if (!validate_targetname()) {
 		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
+		return false;
 	}
 
 	if (!validate_initiatorname()) {
 		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
+		return false;
 	}
 
 	if (!validate_lun()) {
 		cout<<gflags::ProgramUsage()<<endl;
-		exit(0);
+		return false;
 	}
 
 	if (!validate_interval()) {
 		cout<<gflags::ProgramUsage()<<endl;
-		exit(1);
+		return false;
 	}
 
 	return true;

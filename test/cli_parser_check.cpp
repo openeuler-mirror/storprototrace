@@ -29,11 +29,44 @@ TEST(storprototrace, cli_parser)
 
 TEST(storprototrace, validate_interval)
 {
+	gflags::FlagSaver flag_saver;
+
 	FLAGS_interval = 0;
 	EXPECT_FALSE(validate_interval());
 
 	FLAGS_interval = 2;
 	EXPECT_TRUE(validate_interval());
+}
+
+TEST(storprototrace, validate_lun)
+{
+	gflags::FlagSaver flag_saver;
+
+	gflags::SetCommandLineOption("lun", "invalid");
+	EXPECT_FALSE(validate_lun());
+
+	gflags::SetCommandLineOption("lun", "000000000000000g");
+	EXPECT_FALSE(validate_lun());
+
+	gflags::SetCommandLineOption("lun", "0000000000000000");
+	EXPECT_TRUE(validate_lun());
+}
+
+TEST(storprototrace, validate_targetname)
+{
+	gflags::FlagSaver flag_saver;
+
+	gflags::SetCommandLineOption("target", "__storprototrace_missing_target__");
+	EXPECT_FALSE(validate_targetname());
+}
+
+TEST(storprototrace, validate_initiatorname)
+{
+	gflags::FlagSaver flag_saver;
+
+	gflags::SetCommandLineOption("initiatorname",
+	                             "__storprototrace_missing_initiator__");
+	EXPECT_FALSE(validate_initiatorname());
 }
 
 int main(int argc, char *argv[])
